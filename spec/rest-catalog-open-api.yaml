@@ -126,6 +126,8 @@ paths:
           - DELETE /v1/{prefix}/namespaces/{namespace}/tables/{table}
 
           - POST /v1/{prefix}/namespaces/{namespace}/register
+          
+          - POST /v1/{prefix}/namespaces/{namespace}/register_foreign
 
           - POST /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics
 
@@ -570,6 +572,59 @@ paths:
       responses:
         200:
           $ref: '#/components/responses/CreateTableResponse'
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Conflict - The table already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceAlreadyExists:
+                  $ref: '#/components/examples/TableAlreadyExistsError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/namespaces/{namespace}/register_foreign:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+
+    post:
+      tags:
+        - Catalog API
+      summary: Register a foreign table in the given namespace
+      description:
+        Register a foreign table in the given namespace with given properties
+
+      operationId: registerForeignTable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterForeignTableRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/LoadTableResponse'
         400:
           $ref: '#/components/responses/BadRequestErrorResponse'
         401:
@@ -2981,6 +3036,7 @@ components:
           items:
             $ref: '#/components/schemas/StorageCredential'
 
+
     LoadTableResult:
       description: |
         Result used when a table is successfully loaded.
@@ -3109,6 +3165,20 @@ components:
           type: string
         metadata-location:
           type: string
+
+    RegisterForeignTableRequest:
+      type: object
+      required:
+        - name
+        - format
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
 
     CreateViewRequest:
       type: object
@@ -4193,6 +4263,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadTableResult'
+
 
     LoadTableResponse:
       description: Table metadata result when loading a table
