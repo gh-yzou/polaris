@@ -67,6 +67,7 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.RegisterForeignTableRequest;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -326,6 +327,19 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     return Response.ok(
             newHandlerWrapper(securityContext, prefix).registerTable(ns, registerTableRequest))
+        .build();
+  }
+
+  @Override
+  public Response registerForeignTable(
+      String prefix,
+      String namespace,
+      RegisterForeignTableRequest registerForeignTableRequest,
+      SecurityContext securityContext) {
+    Namespace ns = decodeNamespace(namespace);
+    return Response.ok(
+            newHandlerWrapper(securityContext, prefix)
+                .registerForeignTable(ns, registerForeignTableRequest))
         .build();
   }
 

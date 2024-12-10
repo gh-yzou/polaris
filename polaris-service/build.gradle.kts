@@ -182,7 +182,8 @@ openApiGenerate {
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
-      "RegisterForeignTableRequest" to "org.apache.polaris.service.types.RegisterForeignTableRequest"
+      "RegisterForeignTableRequest" to
+        "org.apache.polaris.service.types.RegisterForeignTableRequest"
     )
 }
 

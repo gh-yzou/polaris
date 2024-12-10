@@ -90,6 +90,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.RegisterForeignTableRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -752,6 +753,16 @@ public class PolarisCatalogHandlerWrapper {
         op, TableIdentifier.of(namespace, request.name()));
 
     return doCatalogOperation(() -> CatalogHandlers.registerTable(baseCatalog, namespace, request));
+  }
+
+  public LoadTableResponse registerForeignTable(
+      Namespace namespace, RegisterForeignTableRequest request) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, TableIdentifier.of(namespace, request.getName()));
+
+    LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder();
+    return responseBuilder.build();
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
