@@ -1,0 +1,127 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+  /v1/{prefix}/namespaces/{namespace}/generic-tables:
+    parameters:
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
+
+    post:
+      tags:
+        - Polaris Catalog API
+      summary: Create a generic table in the given namespace
+      description:
+        Create a table or start a create transaction, like atomic CTAS.
+      operationId: createGenericTable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGenericTableRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreateGenericTableResponse'
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Conflict - The generic table already exists
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceAlreadyExists:
+                  $ref: '../rest-catalog-open-api.yaml#/components/examples/TableAlreadyExistsError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  schemas:
+    CreateGenericTableRequest:
+      required:
+        - name
+        - format
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        doc:
+          type: string
+
+    LoadGenericTableResult:
+      description: Result used when a generic table is successfully loaded.
+      type: object
+      required:
+        - table
+      properties:
+        metadata:
+          $ref: '#/components/schemas/GenericTableMetadata'
+
+    GenericTableMetadata:
+      type: object
+      required:
+        - name
+        - format
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        doc:
+          type: string
+        catalog_register_at:
+          type: integer
+          format: int64
+
+  responses:
+    CreateGenericTableResponse:
+      description: Table metadata result after creating a table
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadGenericTableResult'
