@@ -21,8 +21,8 @@
 paths:
   /v1/{prefix}/namespaces/{namespace}/generic-tables:
     parameters:
-      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
-      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
 
     post:
       tags:
@@ -41,35 +41,35 @@ paths:
         200:
           $ref: '#/components/responses/CreateGenericTableResponse'
         400:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
         401:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
         403:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
           description: Not Found - The namespace specified does not exist
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               examples:
                 NamespaceNotFound:
-                  $ref: '../rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
         409:
           description: Conflict - The generic table already exists
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               examples:
                 NamespaceAlreadyExists:
-                  $ref: '../rest-catalog-open-api.yaml#/components/examples/TableAlreadyExistsError'
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/TableAlreadyExistsError'
         419:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
 components:
   schemas:

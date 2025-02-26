@@ -50,6 +50,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
+import org.apache.polaris.service.catalog.api.IcebergRestPolarisCatalogApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
@@ -185,6 +186,13 @@ public class QuarkusProducers {
   public IcebergRestOAuth2ApiService icebergRestOAuth2ApiService(
       QuarkusAuthenticationConfiguration config,
       @Any Instance<IcebergRestOAuth2ApiService> services) {
+    return services.select(Identifier.Literal.of(config.tokenService().type())).get();
+  }
+
+  @Produces
+  public IcebergRestPolarisCatalogApiService icebergRestPolarisCatalogApiService(
+      QuarkusAuthenticationConfiguration config,
+      @Any Instance<IcebergRestPolarisCatalogApiService> services) {
     return services.select(Identifier.Literal.of(config.tokenService().type())).get();
   }
 
