@@ -53,6 +53,7 @@ import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.ThreadPools;
+import org.apache.polaris.core.PolarisEndpoints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +81,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
-          // .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
           .add(Endpoint.V1_LIST_TABLES)
           .add(Endpoint.V1_CREATE_TABLE)
           .add(Endpoint.V1_DELETE_TABLE)
