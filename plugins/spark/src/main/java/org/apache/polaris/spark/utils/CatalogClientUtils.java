@@ -18,11 +18,10 @@
  */
 package org.apache.polaris.spark.utils;
 
+import java.lang.reflect.Field;
 import org.apache.iceberg.rest.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.Field;
 
 public class CatalogClientUtils {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogClientUtils.class);
@@ -31,7 +30,8 @@ public class CatalogClientUtils {
     try {
       Field sessionCatalogField = RESTCatalog.class.getDeclaredField("sessionCatalog");
       sessionCatalogField.setAccessible(true);
-      RESTSessionCatalog sessionCatalog = (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
+      RESTSessionCatalog sessionCatalog =
+          (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
 
       Field clientField = RESTSessionCatalog.class.getDeclaredField("client");
       clientField.setAccessible(true);

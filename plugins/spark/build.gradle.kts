@@ -19,19 +19,13 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins {
-  id("polaris-client")
-  // id("com.gradleup.shadow")
-  // alias(libs.plugins.jandex)
-}
+plugins { id("polaris-client") }
 
 val sparkMajorVersion = "3.5"
 val scalaVersion = "2.12"
 
 dependencies {
-  implementation(project(":polaris-core")) {
-    exclude("org.apache.iceberg", "*")
-  }
+  implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
   // implementation(project(":polaris-api-management-service"))
   // implementation(project(":polaris-api-iceberg-service"))
 
@@ -63,9 +57,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   // duplicatesStrategy = DuplicatesStrategy.INCLUDE
   archiveBaseName = "polaris-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
 
-  dependencies {
-    exclude("META-INF/**")
-  }
+  dependencies { exclude("META-INF/**") }
 
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
@@ -77,7 +69,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   // exclude("META-INF/*.RSA")
 
   // Optional: Minimize the JAR (remove unused classes from dependencies)
-  minimize {
-    exclude(dependency("org.apache.iceberg:iceberg-spark-*.*:.*"))
-  }
+  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-*.*:.*")) }
 }
+
+tasks.withType(Jar::class).named("sourcesJar") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
