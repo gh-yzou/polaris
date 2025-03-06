@@ -30,10 +30,12 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.spark.Spark3Util;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.polaris.spark.utils.CatalogClientUtils;
 import org.apache.spark.sql.SparkSession;
@@ -56,6 +58,10 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;
   private org.apache.iceberg.catalog.ViewCatalog asViewCatalog = null;
 
+  private boolean createParquetAsIceberg = false;
+  private boolean createAvroAsIceberg = false;
+  private boolean createOrcAsIceberg = false;
+
   protected Catalog buildIcebergCatalog(String name, CaseInsensitiveStringMap options) {
     Configuration conf = SparkUtil.hadoopConfCatalogOverrides(SparkSession.active(), name);
     Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -75,6 +81,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
 
     PolarisRESTCatalog catalog = new PolarisRESTCatalog();
     catalog.setConf(conf);
+    // start hanging, need to investigate
     RESTClient icebergRestClient = CatalogClientUtils.getRestClient((RESTCatalog) icebergCatalog);
     catalog.initialize(icebergRestClient, optionsMap);
 
@@ -114,14 +121,24 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
 
   @Override
   public Table loadTable(Identifier ident) throws NoSuchTableException {
-    throw new NoSuchTableException(ident);
+    // should check iceberg first
+    try {
+      return polarisCatalog.loadTable(buildIdentifier(ident));
+    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
+      throw new NoSuchTableException(ident);
+    }
   }
 
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException {
-    throw new TableAlreadyExistsException(ident);
+    String provider = properties.get("provider");
+    try {
+      return polarisCatalog.createTable(buildIdentifier(ident), provider, properties);
+    } catch (AlreadyExistsException e) {
+      throw new TableAlreadyExistsException(ident);
+    }
   }
 
   @Override
@@ -265,5 +282,23 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     }
 
     return false;
+  }
+
+  private boolean useIceberg(String provider) {
+    if (provider == null || "iceberg".equalsIgnoreCase(provider)) {
+      return true;
+    } else if (createParquetAsIceberg && "parquet".equalsIgnoreCase(provider)) {
+      return true;
+    } else if (createAvroAsIceberg && "avro".equalsIgnoreCase(provider)) {
+      return true;
+    } else if (createOrcAsIceberg && "orc".equalsIgnoreCase(provider)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  protected TableIdentifier buildIdentifier(Identifier identifier) {
+    return Spark3Util.identifierToTableIdentifier(identifier);
   }
 }

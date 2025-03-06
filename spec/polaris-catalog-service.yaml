@@ -137,6 +137,9 @@ paths:
   /v1/{prefix}/namespaces/{namespace}/generic-tables:
     $ref: './polaris-catalog-apis/generic-table-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables'
 
+  /v1/{prefix}/namespaces/{namespace}/generic-tables/{table}:
+    $ref: './polaris-catalog-apis/generic-table-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables~1{table}'
+
 
 components:
   securitySchemes:

@@ -32,9 +32,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import org.apache.commons.lang3.NotImplementedException;
+
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -50,10 +49,15 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
 import org.apache.iceberg.util.EnvironmentUtil;
+import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.PolarisEndpoints;
+import org.apache.polaris.core.catalog.PolarisGenericTable;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,11 +73,12 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
 
   private RESTClient restClient = null;
   private final Function<Map<String, String>, RESTClient> clientBuilder;
+  private Cache<String, OAuth2Util.AuthSession> sessions = null;
   private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
   private OAuth2Util.AuthSession catalogAuth = null;
   private boolean keepTokenRefreshed = true;
-  private ResourcePaths paths = null;
+  private PolarisResourcePaths paths = null;
   private Object conf = null;
 
   // a lazy thread pool for token refresh
@@ -82,10 +87,9 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
           .add(Endpoint.V1_LIST_TABLES)
-          .add(Endpoint.V1_CREATE_TABLE)
           .add(Endpoint.V1_DELETE_TABLE)
-          .add(Endpoint.V1_LOAD_TABLE)
           .build();
 
   public PolarisRESTCatalogScratch() {
@@ -159,6 +163,7 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
     Map<String, String> mergedProps = config.merge(props);
     Map<String, String> baseHeaders = configHeaders(mergedProps);
 
+    // this.endpoints = DEFAULT_ENDPOINTS;
     if (config.endpoints().isEmpty()) {
       this.endpoints = DEFAULT_ENDPOINTS;
     } else {
@@ -170,7 +175,7 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
             mergedProps,
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             OAuth2Properties.TOKEN_REFRESH_ENABLED_DEFAULT);
-    this.paths = ResourcePaths.forCatalogProperties(mergedProps);
+    this.paths = PolarisResourcePaths.forCatalogProperties(mergedProps);
 
     String token = mergedProps.get(OAuth2Properties.TOKEN);
     this.catalogAuth =
@@ -351,12 +356,56 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
     }
   }
 
-  public Table createTable(TableIdentifier ident, String format, Map<String, String> props) {
-    throw new NotImplementedException("createTable not implemented");
-    // return delegate.createTable(ident, schema, spec, props);
+  public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
+    LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
+    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    CreateGenericTableRequest request =
+        CreateGenericTableRequest.builder()
+            .setName(ident.name())
+            .setProperties(props)
+            .setFormat(format)
+            .build();
+
+    LoadGenericTableResponse response =
+        restClient.post(
+            paths.genericTables(ident.namespace()),
+            request,
+            LoadGenericTableResponse.class,
+            Maps.newHashMap(),
+            ErrorHandlers.tableErrorHandler());
+
+    PolarisGenericTable genericTable = new PolarisGenericTable(
+        response.getTable().getName(),
+        response.getTable().getFormat(),
+        response.getTable().getProperties(),
+        10);
+
+    return new PolarisSparkTable(genericTable);
   }
 
-  public Table loadTable(TableIdentifier identifier) {
-    throw new NotImplementedException("loadTable not implemented");
+  public PolarisSparkTable loadTable(TableIdentifier identifier) {
+    LOG.warn("load table {}", identifier);
+    Endpoint.check(
+        endpoints,
+        PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
+        () ->
+            new NoSuchTableException(
+                "Unable to load table %s: Server does not support endpoint %s",
+                identifier, PolarisEndpoints.V1_LOAD_GENERIC_TABLE));
+    checkIdentifierIsValid(identifier);
+    LoadGenericTableResponse response = restClient.get(
+        paths.genericTable(identifier),
+        null,
+        LoadGenericTableResponse.class,
+        Maps.newHashMap(),
+        ErrorHandlers.tableErrorHandler());
+
+    PolarisGenericTable genericTable = new PolarisGenericTable(
+        response.getTable().getName(),
+        response.getTable().getFormat(),
+        response.getTable().getProperties(),
+        10);
+
+    return new PolarisSparkTable(genericTable);
   }
 }

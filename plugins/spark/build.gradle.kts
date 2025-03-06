@@ -26,8 +26,9 @@ val scalaVersion = "2.12"
 
 dependencies {
   implementation(project(":polaris-core")) { exclude("org.apache.iceberg", "*") }
+  // implementation(project(":polaris-api-management-model"))
   // implementation(project(":polaris-api-management-service"))
-  // implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-iceberg-service"))
 
   // implementation(libs.guava)
   // implementation(platform(libs.iceberg.bom))

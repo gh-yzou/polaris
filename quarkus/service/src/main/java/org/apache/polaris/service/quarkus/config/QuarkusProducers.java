@@ -190,13 +190,6 @@ public class QuarkusProducers {
   }
 
   @Produces
-  public IcebergRestPolarisCatalogApiService icebergRestPolarisCatalogApiService(
-      QuarkusAuthenticationConfiguration config,
-      @Any Instance<IcebergRestPolarisCatalogApiService> services) {
-    return services.select(Identifier.Literal.of(config.tokenService().type())).get();
-  }
-
-  @Produces
   public TokenBrokerFactory tokenBrokerFactory(
       QuarkusAuthenticationConfiguration config,
       @Any Instance<TokenBrokerFactory> tokenBrokerFactories) {

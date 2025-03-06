@@ -55,6 +55,7 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
@@ -101,6 +102,8 @@ public class IcebergCatalogAdapter
           .add(Endpoint.V1_RENAME_TABLE)
           .add(Endpoint.V1_REGISTER_TABLE)
           .add(Endpoint.V1_REPORT_METRICS)
+          .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
           .build();
 
   private static final Set<Endpoint> VIEW_ENDPOINTS =

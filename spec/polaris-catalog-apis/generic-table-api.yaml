@@ -71,6 +71,45 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
+  /v1/{prefix}/namespaces/{namespace}/generic-tables/{table}:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/table'
+
+    get:
+      tags:
+        - Polaris Catalog API
+      summary: Load a table from the catalog
+      operationId: loadGenericTable
+      description:
+        Load a table from the catalog.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadGenericTableResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchTableException, table to load does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableToLoadDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+        419:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
 components:
   schemas:
     CreateGenericTableRequest:
@@ -89,16 +128,16 @@ components:
         doc:
           type: string
 
-    LoadGenericTableResult:
+    LoadGenericTableResponse:
       description: Result used when a generic table is successfully loaded.
       type: object
       required:
         - table
       properties:
-        metadata:
-          $ref: '#/components/schemas/GenericTableMetadata'
+        table:
+          $ref: '#/components/schemas/GenericTable'
 
-    GenericTableMetadata:
+    GenericTable:
       type: object
       required:
         - name
@@ -120,8 +159,15 @@ components:
 
   responses:
     CreateGenericTableResponse:
-      description: Table metadata result after creating a table
+      description: Table result after creating a table
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadGenericTableResult'
+            $ref: '#/components/schemas/LoadGenericTableResponse'
+
+    LoadGenericTableResponse:
+      description: Table result when loading a table
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadGenericTableResponse'

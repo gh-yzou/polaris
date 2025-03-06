@@ -204,9 +204,6 @@ public class PolarisSparkIntegrationTest {
             "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalogName),
-            endpoints.catalogApiEndpoint().toString())
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
         .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
         .config(

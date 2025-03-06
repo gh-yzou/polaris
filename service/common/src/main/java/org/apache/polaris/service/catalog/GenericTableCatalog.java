@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core;
+package org.apache.polaris.service.catalog;
 
-import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.catalog.PolarisGenericTable;
 
-public class PolarisEndpoints {
-  public static final Endpoint V1_CREATE_GENERIC_TABLE =
-      Endpoint.create("POST", "/v1/{prefix}/namespaces/{namespace}/generic-tables");
-  public static final Endpoint V1_LOAD_GENERIC_TABLE =
-      Endpoint.create("GET", "/v1/{prefix}/namespaces/{namespace}/generic-tables/{table}");
+import java.util.Map;
+
+public interface GenericTableCatalog {
+  PolarisGenericTable createGenericTable(TableIdentifier ident, String format, Map<String, String> props);
+
+  PolarisGenericTable loadGenericTable(TableIdentifier ident);
 }

@@ -59,10 +59,9 @@ class PolarisRESTCatalog implements Configurable<Object> {
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
+          .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
           .add(Endpoint.V1_LIST_TABLES)
-          .add(Endpoint.V1_CREATE_TABLE)
           .add(Endpoint.V1_DELETE_TABLE)
-          .add(Endpoint.V1_LOAD_TABLE)
           .build();
 
   public void initialize(RESTClient client, Map<String, String> properties) {
@@ -160,6 +159,8 @@ class PolarisRESTCatalog implements Configurable<Object> {
   }
 
   public Table createTable(TableIdentifier ident, String format, Map<String, String> props) {
+    // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+
     throw new NotImplementedException("createTable not implemented");
     // return delegate.createTable(ident, schema, spec, props);
   }
