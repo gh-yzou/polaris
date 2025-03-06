@@ -48,10 +48,10 @@ import org.slf4j.LoggerFactory;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 
-public class PolarisGenericTableCatalogHandler implements AutoCloseable {
+public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalogHandler.class);
 
-  private final CallContext callContext;
+  /* private final CallContext callContext;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
   private final String catalogName;
@@ -61,7 +61,7 @@ public class PolarisGenericTableCatalogHandler implements AutoCloseable {
   private final CallContextCatalogFactory catalogFactory;
 
   // Initialized in the authorize methods.
-  private PolarisResolutionManifest resolutionManifest = null;
+  private PolarisResolutionManifest resolutionManifest = null; */
 
   private PolarisGenericTableCatalog genericTableCatalog = null;
 
@@ -73,7 +73,8 @@ public class PolarisGenericTableCatalogHandler implements AutoCloseable {
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
-    this.callContext = callContext;
+    super(callContext, entityManager, metaStoreManager, securityContext, catalogFactory, catalogName, authorizer);
+    /* this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.catalogName = catalogName;
@@ -88,73 +89,7 @@ public class PolarisGenericTableCatalogHandler implements AutoCloseable {
     this.authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
-    this.catalogFactory = catalogFactory;
-  }
-
-
-  private void authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-      PolarisAuthorizableOperation op, TableIdentifier identifier) {
-    Namespace namespace = identifier.namespace();
-
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
-
-    // When creating an entity under a namespace, the authz target is the namespace, but we must
-    // also
-    // add the actual path that will be created as an "optional" passthrough resolution path to
-    // indicate that the underlying catalog is "allowed" to check the creation path for a
-    // conflicting
-    // entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
-  }
-
-  private void authorizeBasicTableLikeOperationOrThrow(
-      PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
-
-    // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
-    if (target == null) {
-      throw new NoSuchTableException("Table does not exist: %s", identifier);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
-
-    initializeCatalog();
+    this.catalogFactory = catalogFactory; */
   }
 
   public LoadGenericTableResponse createGenericTable(Namespace namespace, CreateGenericTableRequest request) {
@@ -199,12 +134,8 @@ public class PolarisGenericTableCatalogHandler implements AutoCloseable {
     return LoadGenericTableResponse.builder().setTable(genericTable).build();
   }
 
-  private static boolean isExternal(CatalogEntity catalog) {
-    return org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL.equals(
-        catalog.getCatalogType());
-  }
-
-  private void initializeCatalog() {
+  @Override
+  protected void initializeCatalog() {
     // initialize the catalog
     Catalog baseCatalog =
         catalogFactory.createCallContextCatalog(
@@ -220,7 +151,6 @@ public class PolarisGenericTableCatalogHandler implements AutoCloseable {
         namespaceCatalog
     );
   }
-
 
   @Override
   public void close() throws Exception {}
