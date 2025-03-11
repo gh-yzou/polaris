@@ -20,7 +20,12 @@ package org.apache.polaris.spark;
 
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
+import org.apache.spark.sql.DataFrameReader;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.TableCapability;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
@@ -42,10 +47,18 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
           TableCapability.OVERWRITE_DYNAMIC);
 
   private final PolarisGenericTable genericTable;
+  Dataset<Row> df;
 
   public PolarisSparkTable(PolarisGenericTable genericTable) {
     LOG.warn("Initialize PolarisSparkTable with table {} format {} properties {}", genericTable.getName(), genericTable.getFormat(), genericTable.getProperties());
     this.genericTable = genericTable;
+    SparkSession spark = SparkSession.getActiveSession().get();
+    if (genericTable.getProperties().containsKey(TableCatalog.PROP_LOCATION)) {
+      String location = genericTable.getProperties().get(TableCatalog.PROP_LOCATION);
+      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load(location);
+    } else {
+      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load();
+    }
   }
 
   @Override
@@ -55,7 +68,7 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
 
   @Override
   public StructType schema() {
-    return null;
+    return df.schema();
   }
 
   @Override
