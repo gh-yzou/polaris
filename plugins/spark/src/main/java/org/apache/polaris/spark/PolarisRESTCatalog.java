@@ -81,6 +81,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
   // private boolean keepTokenRefreshed = true;
   private PolarisResourcePaths paths = null;
   private Object conf = null;
+  private SessionCatalog.SessionContext context = null;
 
   // a lazy thread pool for token refresh
   // private volatile ScheduledExecutorService refreshExecutor = null;
@@ -94,12 +95,16 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
           .build();
 
   public void initialize(RESTClient client, OAuth2Util.AuthSession auth, Map<String, String> properties) {
-    this.restClient = client;
+    LOG.warn("Initializing Polaris REST Catalog with properties: {} auth headers {} configs {}", properties, auth.headers(), auth.config());
+    // this.restClient = client;
     this.catalogAuth = auth;
-    LOG.warn("Initializing Polaris REST Catalog with properties: {}", properties);
+    // initiate a new rest client
+    this.restClient = HTTPClient.builder(properties).uri(properties.get(CatalogProperties.URI)).build().withAuthSession(auth);
     this.paths = PolarisResourcePaths.forCatalogProperties(properties);
     this.endpoints = DEFAULT_ENDPOINTS;
+    this.context = SessionCatalog.SessionContext.createEmpty();
     this.closeables = new CloseableGroup();
+    this.closeables.addCloseable(this.restClient);
   }
 
   @Override
@@ -180,7 +185,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
             paths.genericTables(ident.namespace()),
             request,
             LoadGenericTableResponse.class,
-            this.catalogAuth.headers(),
+            catalogAuth::headers,
             ErrorHandlers.tableErrorHandler());
 
     PolarisGenericTable genericTable = new PolarisGenericTable(

@@ -19,6 +19,8 @@
 package org.apache.polaris.spark.utils;
 
 import java.lang.reflect.Field;
+
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.slf4j.Logger;
@@ -49,6 +51,12 @@ public class CatalogClientUtils {
       sessionCatalogField.setAccessible(true);
       RESTSessionCatalog sessionCatalog =
           (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
+
+      // log context
+      Field contextField = icebergRestCatalog.getClass().getDeclaredField("context");
+      contextField.setAccessible(true);
+      SessionCatalog.SessionContext context = (SessionCatalog.SessionContext) contextField.get(icebergRestCatalog);
+      LOG.warn("session catalog context with credential {}, properties {}", context.credentials(), context.properties());
 
       Field authField = sessionCatalog.getClass().getDeclaredField("catalogAuth");
       authField.setAccessible(true);
