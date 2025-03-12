@@ -20,6 +20,7 @@ package org.apache.polaris.spark.utils;
 
 import java.lang.reflect.Field;
 import org.apache.iceberg.rest.*;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,17 +29,32 @@ public class CatalogClientUtils {
 
   public static RESTClient getRestClient(RESTCatalog icebergRestCatalog) {
     try {
-      Field sessionCatalogField = RESTCatalog.class.getDeclaredField("sessionCatalog");
+      Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
       sessionCatalogField.setAccessible(true);
       RESTSessionCatalog sessionCatalog =
           (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
 
-      Field clientField = RESTSessionCatalog.class.getDeclaredField("client");
+      Field clientField = sessionCatalog.getClass().getDeclaredField("client");
       clientField.setAccessible(true);
 
       return (RESTClient) clientField.get(sessionCatalog);
     } catch (Exception e) {
       throw new RuntimeException("Failed to get the REST client", e);
+    }
+  }
+
+  public static OAuth2Util.AuthSession getAuthSession(RESTCatalog icebergRestCatalog) {
+    try {
+      Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
+      sessionCatalogField.setAccessible(true);
+      RESTSessionCatalog sessionCatalog =
+          (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
+
+      Field authField = sessionCatalog.getClass().getDeclaredField("catalogAuth");
+      authField.setAccessible(true);
+      return (OAuth2Util.AuthSession) authField.get(sessionCatalog);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to get the Auth session", e);
     }
   }
 }

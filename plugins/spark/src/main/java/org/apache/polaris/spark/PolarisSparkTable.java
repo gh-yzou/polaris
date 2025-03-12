@@ -52,13 +52,6 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
   public PolarisSparkTable(PolarisGenericTable genericTable) {
     LOG.warn("Initialize PolarisSparkTable with table {} format {} properties {}", genericTable.getName(), genericTable.getFormat(), genericTable.getProperties());
     this.genericTable = genericTable;
-    SparkSession spark = SparkSession.getActiveSession().get();
-    if (genericTable.getProperties().containsKey(TableCatalog.PROP_LOCATION)) {
-      String location = genericTable.getProperties().get(TableCatalog.PROP_LOCATION);
-      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load(location);
-    } else {
-      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load();
-    }
   }
 
   @Override
@@ -68,12 +61,20 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
 
   @Override
   public StructType schema() {
+    SparkSession spark = SparkSession.getActiveSession().get();
+    if (genericTable.getProperties().containsKey(TableCatalog.PROP_LOCATION)) {
+      String location = genericTable.getProperties().get(TableCatalog.PROP_LOCATION);
+      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load(location);
+    } else {
+      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load();
+    }
+
     return df.schema();
   }
 
   @Override
   public Transform[] partitioning() {
-    return null;
+    return new Transform[] {};
   }
 
   @Override

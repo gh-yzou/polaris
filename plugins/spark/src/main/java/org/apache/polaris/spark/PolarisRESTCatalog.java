@@ -22,26 +22,48 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import org.apache.commons.lang3.NotImplementedException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.Configurable;
+import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.*;
+import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.DefaultAuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
+import org.apache.iceberg.util.EnvironmentUtil;
+import org.apache.iceberg.util.Pair;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.PolarisEndpoints;
+import org.apache.polaris.core.catalog.PolarisGenericTable;
+import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class PolarisRESTCatalog implements Configurable<Object> {
+class PolarisRESTCatalog implements Configurable<Object>, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
@@ -52,9 +74,16 @@ class PolarisRESTCatalog implements Configurable<Object> {
           OAuth2Properties.SAML1_TOKEN_TYPE);
 
   private RESTClient restClient = null;
+  // private Cache<String, OAuth2Util.AuthSession> sessions = null;
+  private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
-  private ResourcePaths paths = null;
+  private OAuth2Util.AuthSession catalogAuth = null;
+  // private boolean keepTokenRefreshed = true;
+  private PolarisResourcePaths paths = null;
   private Object conf = null;
+
+  // a lazy thread pool for token refresh
+  // private volatile ScheduledExecutorService refreshExecutor = null;
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
@@ -64,45 +93,18 @@ class PolarisRESTCatalog implements Configurable<Object> {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public void initialize(RESTClient client, Map<String, String> properties) {
+  public void initialize(RESTClient client, OAuth2Util.AuthSession auth, Map<String, String> properties) {
     this.restClient = client;
+    this.catalogAuth = auth;
     LOG.warn("Initializing Polaris REST Catalog with properties: {}", properties);
-    this.paths = ResourcePaths.forCatalogProperties(properties);
+    this.paths = PolarisResourcePaths.forCatalogProperties(properties);
     this.endpoints = DEFAULT_ENDPOINTS;
+    this.closeables = new CloseableGroup();
   }
 
   @Override
   public void setConf(Object newConf) {
     this.conf = newConf;
-  }
-
-  private static Map<String, String> configHeaders(Map<String, String> properties) {
-    return RESTUtil.extractPrefixMap(properties, "header.");
-  }
-
-  private static ConfigResponse fetchConfig(
-      RESTClient client, Map<String, String> headers, Map<String, String> properties) {
-    // send the client's warehouse location to the service to keep in sync
-    // this is needed for cases where the warehouse is configured client side, but may be used on
-    // the server side,
-    // like the Hive Metastore, where both client and service hive-site.xml may have a warehouse
-    // location.
-    ImmutableMap.Builder<String, String> queryParams = ImmutableMap.builder();
-    if (properties.containsKey(CatalogProperties.WAREHOUSE_LOCATION)) {
-      queryParams.put(
-          CatalogProperties.WAREHOUSE_LOCATION,
-          properties.get(CatalogProperties.WAREHOUSE_LOCATION));
-    }
-
-    ConfigResponse configResponse =
-        client.get(
-            ResourcePaths.config(),
-            queryParams.build(),
-            ConfigResponse.class,
-            headers,
-            ErrorHandlers.defaultErrorHandler());
-    configResponse.validate();
-    return configResponse;
   }
 
   private void checkNamespaceIsValid(Namespace namespace) {
@@ -117,8 +119,14 @@ class PolarisRESTCatalog implements Configurable<Object> {
     }
   }
 
+  @Override
+  public void close() throws IOException {
+    if (closeables != null) {
+      closeables.close();
+    }
+  }
+
   public List<TableIdentifier> listTables(Namespace ns) {
-    LOG.warn("Polaris REST Catalog listTables");
     if (!endpoints.contains(Endpoint.V1_LIST_TABLES)) {
       return ImmutableList.of();
     }
@@ -129,7 +137,6 @@ class PolarisRESTCatalog implements Configurable<Object> {
     String pageToken = "";
 
     do {
-      LOG.warn("Polaris REST Catalog listTables REST CALL to path {}", paths.tables(ns));
       queryParams.put("pageToken", pageToken);
       ListTablesResponse response =
           restClient.get(
@@ -158,14 +165,56 @@ class PolarisRESTCatalog implements Configurable<Object> {
     }
   }
 
-  public Table createTable(TableIdentifier ident, String format, Map<String, String> props) {
-    // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+  public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
+    LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
+    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    CreateGenericTableRequest request =
+        CreateGenericTableRequest.builder()
+            .setName(ident.name())
+            .setProperties(props)
+            .setFormat(format)
+            .build();
 
-    throw new NotImplementedException("createTable not implemented");
-    // return delegate.createTable(ident, schema, spec, props);
+    LoadGenericTableResponse response =
+        restClient.post(
+            paths.genericTables(ident.namespace()),
+            request,
+            LoadGenericTableResponse.class,
+            this.catalogAuth.headers(),
+            ErrorHandlers.tableErrorHandler());
+
+    PolarisGenericTable genericTable = new PolarisGenericTable(
+        response.getTable().getName(),
+        response.getTable().getFormat(),
+        response.getTable().getProperties(),
+        10);
+
+    return new PolarisSparkTable(genericTable);
   }
 
-  public Table loadTable(TableIdentifier identifier) {
-    throw new NotImplementedException("loadTable not implemented");
+  public PolarisSparkTable loadTable(TableIdentifier identifier) {
+    LOG.warn("load table {}", identifier);
+    Endpoint.check(
+        endpoints,
+        PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
+        () ->
+            new NoSuchTableException(
+                "Unable to load table %s: Server does not support endpoint %s",
+                identifier, PolarisEndpoints.V1_LOAD_GENERIC_TABLE));
+    checkIdentifierIsValid(identifier);
+    LoadGenericTableResponse response = restClient.get(
+        paths.genericTable(identifier),
+        null,
+        LoadGenericTableResponse.class,
+        this.catalogAuth.headers(),
+        ErrorHandlers.tableErrorHandler());
+
+    PolarisGenericTable genericTable = new PolarisGenericTable(
+        response.getTable().getName(),
+        response.getTable().getFormat(),
+        response.getTable().getProperties(),
+        10);
+
+    return new PolarisSparkTable(genericTable);
   }
 }
