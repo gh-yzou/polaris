@@ -129,7 +129,7 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
         && (hasInitToken || hasCredential)
         && !PropertyUtil.propertyAsBoolean(props, "rest.sigv4-enabled", false)) {
       LOG.warn(
-          "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}/{}. "
+          "Polaris REST client is missing the OAuth2 server URI configuration and defaults to {}/{}. "
               + "This automatic fallback will be removed in a future Iceberg release."
               + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
               + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
@@ -159,9 +159,12 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
       throw new UncheckedIOException("Failed to close HTTP client", e);
     }
 
+    LOG.warn("Original props {}", props);
     // build the final configuration and set up the catalog's auth
     Map<String, String> mergedProps = config.merge(props);
+    LOG.warn("Merged props {}", mergedProps);
     Map<String, String> baseHeaders = configHeaders(mergedProps);
+    LOG.warn("base headers {}", baseHeaders);
 
     // this.endpoints = DEFAULT_ENDPOINTS;
     if (config.endpoints().isEmpty()) {
