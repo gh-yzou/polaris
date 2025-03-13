@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class CatalogClientUtils {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogClientUtils.class);
 
-  public static RESTClient getRestClient(RESTCatalog icebergRestCatalog) {
+  public static HTTPClient getRestClient(RESTCatalog icebergRestCatalog) {
     try {
       Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
       sessionCatalogField.setAccessible(true);
@@ -39,9 +39,9 @@ public class CatalogClientUtils {
       Field clientField = sessionCatalog.getClass().getDeclaredField("client");
       clientField.setAccessible(true);
 
-      return (RESTClient) clientField.get(sessionCatalog);
+      return (HTTPClient) clientField.get(sessionCatalog);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to get the REST client", e);
+      throw new RuntimeException("Failed to get the HTTP REST client", e);
     }
   }
 

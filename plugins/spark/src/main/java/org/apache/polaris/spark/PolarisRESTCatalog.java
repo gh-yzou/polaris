@@ -29,11 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
@@ -44,8 +39,6 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.hadoop.Configurable;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.*;
-import org.apache.iceberg.rest.auth.AuthConfig;
-import org.apache.iceberg.rest.auth.DefaultAuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
@@ -63,7 +56,7 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class PolarisRESTCatalog implements Configurable<Object>, Closeable {
+class PolarisRESTCatalog implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
@@ -73,18 +66,9 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
           OAuth2Properties.SAML2_TOKEN_TYPE,
           OAuth2Properties.SAML1_TOKEN_TYPE);
 
-  private RESTClient restClient = null;
-  // private Cache<String, OAuth2Util.AuthSession> sessions = null;
+  private PolarisRESTClient restClient = null;
   private CloseableGroup closeables = null;
-  private Set<Endpoint> endpoints;
-  private OAuth2Util.AuthSession catalogAuth = null;
-  // private boolean keepTokenRefreshed = true;
   private PolarisResourcePaths paths = null;
-  private Object conf = null;
-  private SessionCatalog.SessionContext context = null;
-
-  // a lazy thread pool for token refresh
-  // private volatile ScheduledExecutorService refreshExecutor = null;
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
@@ -94,22 +78,14 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public void initialize(RESTClient client, OAuth2Util.AuthSession auth, Map<String, String> properties) {
-    LOG.warn("Initializing Polaris REST Catalog with properties: {} auth headers {} configs {}", properties, auth.headers(), auth.config());
-    // this.restClient = client;
-    this.catalogAuth = auth;
+  public void initialize(PolarisRESTClient client, Map<String, String> properties) {
+    LOG.warn("Initializing Polaris REST Catalog with properties: {}", properties);
+    this.restClient = client;
+    // this.catalogAuth = auth;
     // initiate a new rest client
-    this.restClient = HTTPClient.builder(properties).uri(properties.get(CatalogProperties.URI)).build().withAuthSession(auth);
-    this.paths = PolarisResourcePaths.forCatalogProperties(properties);
-    this.endpoints = DEFAULT_ENDPOINTS;
-    this.context = SessionCatalog.SessionContext.createEmpty();
+    this.paths = PolarisResourcePaths.forCatalogProperties(client.getConfigs());
     this.closeables = new CloseableGroup();
     this.closeables.addCloseable(this.restClient);
-  }
-
-  @Override
-  public void setConf(Object newConf) {
-    this.conf = newConf;
   }
 
   private void checkNamespaceIsValid(Namespace namespace) {
@@ -132,7 +108,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
   }
 
   public List<TableIdentifier> listTables(Namespace ns) {
-    if (!endpoints.contains(Endpoint.V1_LIST_TABLES)) {
+    if (!this.restClient.getEndpoints().contains(Endpoint.V1_LIST_TABLES)) {
       return ImmutableList.of();
     }
 
@@ -158,7 +134,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
   }
 
   public boolean dropTable(TableIdentifier identifier) {
-    Endpoint.check(endpoints, Endpoint.V1_DELETE_TABLE);
+    Endpoint.check(this.restClient.getEndpoints(), Endpoint.V1_DELETE_TABLE);
     checkIdentifierIsValid(identifier);
 
     try {
@@ -172,7 +148,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
 
   public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
     LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
-    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
+    // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
     CreateGenericTableRequest request =
         CreateGenericTableRequest.builder()
             .setName(ident.name())
@@ -180,12 +156,13 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
             .setFormat(format)
             .build();
 
+    LOG.warn("Create Table REQUEST path {} request {}", paths.genericTables(ident.namespace()), request);
     LoadGenericTableResponse response =
         restClient.post(
             paths.genericTables(ident.namespace()),
             request,
             LoadGenericTableResponse.class,
-            catalogAuth::headers,
+            Maps.newHashMap(),
             ErrorHandlers.tableErrorHandler());
 
     PolarisGenericTable genericTable = new PolarisGenericTable(
@@ -200,7 +177,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
   public PolarisSparkTable loadTable(TableIdentifier identifier) {
     LOG.warn("load table {}", identifier);
     Endpoint.check(
-        endpoints,
+        this.restClient.getEndpoints(),
         PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
         () ->
             new NoSuchTableException(
@@ -211,7 +188,7 @@ class PolarisRESTCatalog implements Configurable<Object>, Closeable {
         paths.genericTable(identifier),
         null,
         LoadGenericTableResponse.class,
-        this.catalogAuth.headers(),
+        Maps.newHashMap(),
         ErrorHandlers.tableErrorHandler());
 
     PolarisGenericTable genericTable = new PolarisGenericTable(

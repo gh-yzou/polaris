@@ -54,7 +54,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
   private String catalogName = null;
   private Catalog icebergCatalog = null;
-  private PolarisRESTCatalog polarisCatalog = null;
+  private PolarisRESTCatalogScratch polarisCatalog = null;
   private String[] defaultNamespace = null;
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;
   private org.apache.iceberg.catalog.ViewCatalog asViewCatalog = null;
@@ -80,14 +80,24 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
     optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
 
-    PolarisRESTCatalog catalog = new PolarisRESTCatalog();
+    /* PolarisRESTCatalog catalog = new PolarisRESTCatalog();
     catalog.setConf(conf);
     // start hanging, need to investigate
     RESTClient icebergRestClient = CatalogClientUtils.getRestClient((RESTCatalog) icebergCatalog);
     OAuth2Util.AuthSession catalogAuth = CatalogClientUtils.getAuthSession((RESTCatalog) icebergCatalog);
-    catalog.initialize(icebergRestClient, catalogAuth, optionsMap);
+    catalog.initialize(icebergRestClient, catalogAuth, optionsMap); */
 
-    return catalog;
+    try {
+      PolarisRESTClient restClient = new PolarisRESTClient();
+      restClient.initialize(name, optionsMap);
+
+      PolarisRESTCatalog catalog = new PolarisRESTCatalog();
+      catalog.initialize(restClient, optionsMap);
+      return catalog;
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to initialize PolarisRESTClient", e);
+
+    }
   }
 
   protected PolarisRESTCatalogScratch buildPolarisCatalogScratch(
@@ -114,8 +124,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public void initialize(String name, CaseInsensitiveStringMap options) {
     this.catalogName = name;
     this.icebergCatalog = buildIcebergCatalog(name, options);
-    this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
-    // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
+    // this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
+    this.polarisCatalog = buildPolarisCatalogScratch(name, options);
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;

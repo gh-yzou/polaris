@@ -22,36 +22,20 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.hadoop.Configurable;
 import org.apache.iceberg.io.CloseableGroup;
+import org.apache.iceberg.relocated.com.google.common.base.Function;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.DefaultAuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
 import org.apache.iceberg.util.EnvironmentUtil;
-import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.PolarisEndpoints;
@@ -61,8 +45,22 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+class PolarisRESTClient implements Closeable {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTClient.class);
+
+  static final String VIEW_ENDPOINTS_SUPPORTED = "view-endpoints-supported";
+  public static final String REST_PAGE_SIZE = "rest-page-size";
+
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
           OAuth2Properties.ID_TOKEN_TYPE,
@@ -71,20 +69,7 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
           OAuth2Properties.SAML2_TOKEN_TYPE,
           OAuth2Properties.SAML1_TOKEN_TYPE);
 
-  private RESTClient restClient = null;
-  private final Function<Map<String, String>, RESTClient> clientBuilder;
-  private Cache<String, OAuth2Util.AuthSession> sessions = null;
-  private CloseableGroup closeables = null;
-  private Set<Endpoint> endpoints;
-  private OAuth2Util.AuthSession catalogAuth = null;
-  private boolean keepTokenRefreshed = true;
-  private PolarisResourcePaths paths = null;
-  private Object conf = null;
-
-  // a lazy thread pool for token refresh
-  private volatile ScheduledExecutorService refreshExecutor = null;
-
-  private static final Set<Endpoint> DEFAULT_ENDPOINTS =
+  private static final Set<Endpoint> DEFAULT_GENERIC_TABLE_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
           .add(PolarisEndpoints.V1_LOAD_GENERIC_TABLE)
@@ -92,20 +77,58 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public PolarisRESTCatalogScratch() {
+  private static final Set<Endpoint> DEFAULT_ICEBERG_ENDPOINTS =
+      org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_NAMESPACES)
+          .add(Endpoint.V1_LOAD_NAMESPACE)
+          .add(Endpoint.V1_CREATE_NAMESPACE)
+          .add(Endpoint.V1_UPDATE_NAMESPACE)
+          .add(Endpoint.V1_DELETE_NAMESPACE)
+          .add(Endpoint.V1_LIST_TABLES)
+          .add(Endpoint.V1_LOAD_TABLE)
+          .add(Endpoint.V1_CREATE_TABLE)
+          .add(Endpoint.V1_UPDATE_TABLE)
+          .add(Endpoint.V1_DELETE_TABLE)
+          .add(Endpoint.V1_RENAME_TABLE)
+          .add(Endpoint.V1_REGISTER_TABLE)
+          .add(Endpoint.V1_REPORT_METRICS)
+          .add(Endpoint.V1_COMMIT_TRANSACTION)
+          .build();
+
+  // these view endpoints must not be updated in order to maintain backwards compatibility with
+  // legacy servers
+  private static final Set<Endpoint> VIEW_ENDPOINTS =
+      org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_VIEWS)
+          .add(Endpoint.V1_LOAD_VIEW)
+          .add(Endpoint.V1_CREATE_VIEW)
+          .add(Endpoint.V1_UPDATE_VIEW)
+          .add(Endpoint.V1_DELETE_VIEW)
+          .add(Endpoint.V1_RENAME_VIEW)
+          .build();
+
+  private RESTClient restClient = null;
+  private final Function<Map<String, String>, RESTClient> clientBuilder;
+  private CloseableGroup closeables = null;
+  private Set<Endpoint> endpoints = null;
+  private final SessionCatalog.SessionContext context;
+  private OAuth2Util.AuthSession catalogAuth = null;
+  private boolean keepTokenRefreshed = true;
+  private Map<String, String> configs = null;
+
+  private volatile ScheduledExecutorService refreshExecutor = null;
+
+  public PolarisRESTClient() {
     this(
         SessionCatalog.SessionContext.createEmpty(),
         config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
   }
 
-  public PolarisRESTCatalogScratch(Function<Map<String, String>, RESTClient> clientBuilder) {
-    this(SessionCatalog.SessionContext.createEmpty(), clientBuilder);
-  }
-
-  public PolarisRESTCatalogScratch(
+  public PolarisRESTClient(
       SessionCatalog.SessionContext context,
       Function<Map<String, String>, RESTClient> clientBuilder) {
     this.clientBuilder = clientBuilder;
+    this.context = context;
   }
 
   public void initialize(String name, Map<String, String> unresolved) {
@@ -129,7 +152,7 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
         && (hasInitToken || hasCredential)
         && !PropertyUtil.propertyAsBoolean(props, "rest.sigv4-enabled", false)) {
       LOG.warn(
-          "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}/{}. "
+          "Polaris REST client is missing the OAuth2 server URI configuration and defaults to {}/{}. "
               + "This automatic fallback will be removed in a future Iceberg release."
               + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
               + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
@@ -138,11 +161,12 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
           ResourcePaths.tokens(),
           OAuth2Properties.OAUTH2_SERVER_URI);
     }
+
     String oauth2ServerUri =
         props.getOrDefault(OAuth2Properties.OAUTH2_SERVER_URI, ResourcePaths.tokens());
     try (DefaultAuthSession initSession =
-            DefaultAuthSession.of(HTTPHeaders.of(OAuth2Util.authHeaders(initToken)));
-        RESTClient initClient = clientBuilder.apply(props).withAuthSession(initSession)) {
+             DefaultAuthSession.of(HTTPHeaders.of(OAuth2Util.authHeaders(initToken)));
+         RESTClient initClient = clientBuilder.apply(props).withAuthSession(initSession)) {
       Map<String, String> initHeaders = configHeaders(props);
       if (hasCredential) {
         authResponse =
@@ -163,9 +187,17 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
     Map<String, String> mergedProps = config.merge(props);
     Map<String, String> baseHeaders = configHeaders(mergedProps);
 
-    // this.endpoints = DEFAULT_ENDPOINTS;
     if (config.endpoints().isEmpty()) {
-      this.endpoints = DEFAULT_ENDPOINTS;
+      this.endpoints =
+          PropertyUtil.propertyAsBoolean(mergedProps, VIEW_ENDPOINTS_SUPPORTED, false)
+              ? org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
+              .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
+              .addAll(DEFAULT_ICEBERG_ENDPOINTS)
+              .addAll(VIEW_ENDPOINTS)
+              .build()
+              : org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
+              .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
+              .addAll(DEFAULT_ICEBERG_ENDPOINTS).build();
     } else {
       this.endpoints = ImmutableSet.copyOf(config.endpoints());
     }
@@ -175,7 +207,6 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
             mergedProps,
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             OAuth2Properties.TOKEN_REFRESH_ENABLED_DEFAULT);
-    this.paths = PolarisResourcePaths.forCatalogProperties(mergedProps);
 
     String token = mergedProps.get(OAuth2Properties.TOKEN);
     this.catalogAuth =
@@ -204,43 +235,45 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
       this.restClient = restClient.withAuthSession(catalogAuth);
     }
 
+    this.configs = mergedProps;
+
     this.closeables = new CloseableGroup();
     this.closeables.addCloseable(this.restClient);
     this.closeables.setSuppressCloseFailure(true);
   }
 
-  @Override
-  public void setConf(Object newConf) {
-    this.conf = newConf;
+  public Map<String, String> getConfigs() {
+    return configs;
   }
 
-  private ScheduledExecutorService tokenRefreshExecutor(String catalogName) {
-    if (!keepTokenRefreshed) {
-      return null;
-    }
-
-    if (refreshExecutor == null) {
-      synchronized (this) {
-        if (refreshExecutor == null) {
-          this.refreshExecutor = ThreadPools.newScheduledPool(catalogName + "-token-refresh", 1);
-        }
-      }
-    }
-
-    return refreshExecutor;
+  public Set<Endpoint> getEndpoints() {
+    return endpoints;
   }
 
-  private Long expiresAtMillis(Map<String, String> properties) {
-    if (properties.containsKey(OAuth2Properties.TOKEN_EXPIRES_IN_MS)) {
-      long expiresInMillis =
-          PropertyUtil.propertyAsLong(
-              properties,
-              OAuth2Properties.TOKEN_EXPIRES_IN_MS,
-              OAuth2Properties.TOKEN_EXPIRES_IN_MS_DEFAULT);
-      return System.currentTimeMillis() + expiresInMillis;
-    } else {
-      return null;
-    }
+  public <T extends RESTResponse> T get(
+      String path,
+      Map<String, String> queryParams,
+      Class<T> responseType,
+      Map<String, String> headers,
+      Consumer<ErrorResponse> errorHandler){
+    return this.restClient.get(path, queryParams, responseType, headers, errorHandler);
+  }
+
+  public <T extends RESTResponse> T post(
+      String path,
+      RESTRequest body,
+      Class<T> responseType,
+      Map<String, String> headers,
+      Consumer<ErrorResponse> errorHandler) {
+    return this.restClient.post(path, body, responseType, headers, errorHandler);
+  }
+
+  public <T extends RESTResponse> T delete(
+      String path,
+      Class<T> responseType,
+      Map<String, String> headers,
+      Consumer<ErrorResponse> errorHandler) {
+    return this.restClient.delete(path, responseType, headers, errorHandler);
   }
 
   private static Map<String, String> configHeaders(Map<String, String> properties) {
@@ -272,141 +305,40 @@ class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
     return configResponse;
   }
 
-  private void shutdownRefreshExecutor() {
-    if (refreshExecutor != null) {
-      ScheduledExecutorService service = refreshExecutor;
-      this.refreshExecutor = null;
+  private ScheduledExecutorService tokenRefreshExecutor(String catalogName) {
+    if (!keepTokenRefreshed) {
+      return null;
+    }
 
-      List<Runnable> tasks = service.shutdownNow();
-      tasks.forEach(
-          task -> {
-            if (task instanceof Future) {
-              ((Future<?>) task).cancel(true);
-            }
-          });
-
-      try {
-        if (!service.awaitTermination(1, TimeUnit.MINUTES)) {
-          LOG.warn("Timed out waiting for refresh executor to terminate");
+    if (refreshExecutor == null) {
+      synchronized (this) {
+        if (refreshExecutor == null) {
+          this.refreshExecutor = ThreadPools.newScheduledPool(catalogName + "-token-refresh", 1);
         }
-      } catch (InterruptedException e) {
-        LOG.warn("Interrupted while waiting for refresh executor to terminate", e);
-        Thread.currentThread().interrupt();
       }
     }
+
+    return refreshExecutor;
   }
 
-  private void checkNamespaceIsValid(Namespace namespace) {
-    if (namespace.isEmpty()) {
-      throw new NoSuchNamespaceException("Invalid namespace: %s", namespace);
+  private Long expiresAtMillis(Map<String, String> properties) {
+    if (properties.containsKey(OAuth2Properties.TOKEN_EXPIRES_IN_MS)) {
+      long expiresInMillis =
+          PropertyUtil.propertyAsLong(
+              properties,
+              OAuth2Properties.TOKEN_EXPIRES_IN_MS,
+              OAuth2Properties.TOKEN_EXPIRES_IN_MS_DEFAULT);
+      return System.currentTimeMillis() + expiresInMillis;
+    } else {
+      return null;
     }
   }
 
-  private void checkIdentifierIsValid(TableIdentifier tableIdentifier) {
-    if (tableIdentifier.namespace().isEmpty()) {
-      throw new NoSuchTableException("Invalid table identifier: %s", tableIdentifier);
-    }
-  }
 
   @Override
   public void close() throws IOException {
-    shutdownRefreshExecutor();
-
     if (closeables != null) {
       closeables.close();
     }
-  }
-
-  public List<TableIdentifier> listTables(Namespace ns) {
-    if (!endpoints.contains(Endpoint.V1_LIST_TABLES)) {
-      return ImmutableList.of();
-    }
-
-    checkNamespaceIsValid(ns);
-    Map<String, String> queryParams = Maps.newHashMap();
-    ImmutableList.Builder<TableIdentifier> tables = ImmutableList.builder();
-    String pageToken = "";
-
-    do {
-      queryParams.put("pageToken", pageToken);
-      ListTablesResponse response =
-          restClient.get(
-              paths.tables(ns),
-              queryParams,
-              ListTablesResponse.class,
-              Maps.newHashMap(),
-              ErrorHandlers.namespaceErrorHandler());
-      pageToken = response.nextPageToken();
-      tables.addAll(response.identifiers());
-    } while (pageToken != null);
-
-    return tables.build();
-  }
-
-  public boolean dropTable(TableIdentifier identifier) {
-    Endpoint.check(endpoints, Endpoint.V1_DELETE_TABLE);
-    checkIdentifierIsValid(identifier);
-
-    try {
-      restClient.delete(
-          paths.table(identifier), null, Maps.newHashMap(), ErrorHandlers.tableErrorHandler());
-      return true;
-    } catch (NoSuchTableException e) {
-      return false;
-    }
-  }
-
-  public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
-    LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
-    Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
-    CreateGenericTableRequest request =
-        CreateGenericTableRequest.builder()
-            .setName(ident.name())
-            .setProperties(props)
-            .setFormat(format)
-            .build();
-
-    LOG.warn("Create Table REQUEST path {} request {}", paths.genericTables(ident.namespace()), request);
-    LoadGenericTableResponse response =
-        restClient.post(
-            paths.genericTables(ident.namespace()),
-            request,
-            LoadGenericTableResponse.class,
-            Maps.newHashMap(),
-            ErrorHandlers.tableErrorHandler());
-
-    PolarisGenericTable genericTable = new PolarisGenericTable(
-        response.getTable().getName(),
-        response.getTable().getFormat(),
-        response.getTable().getProperties(),
-        10);
-
-    return new PolarisSparkTable(genericTable);
-  }
-
-  public PolarisSparkTable loadTable(TableIdentifier identifier) {
-    LOG.warn("load table {}", identifier);
-    Endpoint.check(
-        endpoints,
-        PolarisEndpoints.V1_LOAD_GENERIC_TABLE,
-        () ->
-            new NoSuchTableException(
-                "Unable to load table %s: Server does not support endpoint %s",
-                identifier, PolarisEndpoints.V1_LOAD_GENERIC_TABLE));
-    checkIdentifierIsValid(identifier);
-    LoadGenericTableResponse response = restClient.get(
-        paths.genericTable(identifier),
-        null,
-        LoadGenericTableResponse.class,
-        Maps.newHashMap(),
-        ErrorHandlers.tableErrorHandler());
-
-    PolarisGenericTable genericTable = new PolarisGenericTable(
-        response.getTable().getName(),
-        response.getTable().getFormat(),
-        response.getTable().getProperties(),
-        10);
-
-    return new PolarisSparkTable(genericTable);
   }
 }
