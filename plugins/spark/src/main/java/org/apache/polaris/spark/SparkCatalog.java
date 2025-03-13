@@ -54,7 +54,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
   private String catalogName = null;
   private Catalog icebergCatalog = null;
-  private PolarisRESTCatalogScratch polarisCatalog = null;
+  // private PolarisRESTCatalogScratch polarisCatalog = null;
+  private PolarisRESTCatalogReflect polarisCatalog = null;
   private String[] defaultNamespace = null;
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;
   private org.apache.iceberg.catalog.ViewCatalog asViewCatalog = null;
@@ -115,6 +116,19 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return catalog;
   }
 
+  protected  PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog, CaseInsensitiveStringMap options) {
+    Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    optionsMap.putAll(options.asCaseSensitiveMap());
+    optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
+    optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
+
+    // start hanging, need to investigate
+    RESTClient icebergRestClient = CatalogClientUtils.getRestClient((RESTCatalog) icebergCatalog);
+    OAuth2Util.AuthSession catalogAuth = CatalogClientUtils.getAuthSession((RESTCatalog) icebergCatalog);
+    PolarisRESTCatalogReflect catalog = new PolarisRESTCatalogReflect(icebergRestClient, catalogAuth, optionsMap);
+    return catalog;
+  }
+
   @Override
   public String name() {
     return catalogName;
@@ -125,7 +139,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     this.catalogName = name;
     this.icebergCatalog = buildIcebergCatalog(name, options);
     // this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
-    this.polarisCatalog = buildPolarisCatalogScratch(name, options);
+    // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
+    this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog, options);
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;
