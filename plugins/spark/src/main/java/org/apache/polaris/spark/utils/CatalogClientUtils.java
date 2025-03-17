@@ -65,4 +65,35 @@ public class CatalogClientUtils {
       throw new RuntimeException("Failed to get the Auth session", e);
     }
   }
+
+  public static RESTClientInfo extractIcebergRESTClientInfo(RESTCatalog icebergRestCatalog) {
+    try {
+      Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
+      sessionCatalogField.setAccessible(true);
+      RESTSessionCatalog sessionCatalog =
+          (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
+
+      // extract the rest client
+      Field clientField = sessionCatalog.getClass().getDeclaredField("client");
+      clientField.setAccessible(true);
+      RESTClient restClient = (RESTClient) clientField.get(sessionCatalog);
+
+      // extract the catalog auth session
+      Field authField = sessionCatalog.getClass().getDeclaredField("catalogAuth");
+      authField.setAccessible(true);
+      OAuth2Util.AuthSession catalogAuth = (OAuth2Util.AuthSession) authField.get(sessionCatalog);
+
+      // extract the prefix
+      Field pathField = sessionCatalog.getClass().getDeclaredField("paths");
+      pathField.setAccessible(true);
+      ResourcePaths paths = (ResourcePaths) pathField.get(sessionCatalog);
+      Field prefixField = paths.getClass().getDeclaredField("prefix");
+      prefixField.setAccessible(true);
+      String prefix = (String) prefixField.get(paths);
+
+      return new RESTClientInfo(restClient, catalogAuth, prefix);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to extract the Iceberg Rest Client Info", e);
+    }
+  }
 }

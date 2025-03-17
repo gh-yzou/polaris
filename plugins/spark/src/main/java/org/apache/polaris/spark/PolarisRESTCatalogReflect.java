@@ -33,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
@@ -58,6 +59,7 @@ import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
+import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,15 +90,11 @@ class PolarisRESTCatalogReflect implements Closeable {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public PolarisRESTCatalogReflect(
-      RESTClient restClient,
-      OAuth2Util.AuthSession catalogAuth,
-      Map<String, String> properties
-      ) {
-    this.restClient = restClient;
-    this.catalogAuth = catalogAuth;
+  public PolarisRESTCatalogReflect(RESTClientInfo clientInfo) {
+    this.restClient = clientInfo.getRestClient();
+    this.catalogAuth = clientInfo.getCatalogAuth();
     this.endpoints = DEFAULT_ENDPOINTS;
-    this.paths = new PolarisResourcePaths(properties.get("warehouse"));
+    this.paths = new PolarisResourcePaths(clientInfo.getPrefix());
   }
 
   private void checkNamespaceIsValid(Namespace namespace) {

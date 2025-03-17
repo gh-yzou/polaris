@@ -31,6 +31,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -39,6 +40,7 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.Spark3Util;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.polaris.spark.utils.CatalogClientUtils;
+import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -49,16 +51,22 @@ import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SparkCatalog implements TableCatalog, SupportsNamespaces {
+  private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
+  private static final String SPARK_CATALOG_KEY = "spark.sql.catalog.spark_catalog";
   private String catalogName = null;
   private Catalog icebergCatalog = null;
+  // private org.apache.spark.sql.catalog.
   // private PolarisRESTCatalogScratch polarisCatalog = null;
   private PolarisRESTCatalogReflect polarisCatalog = null;
   private String[] defaultNamespace = null;
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;
   private org.apache.iceberg.catalog.ViewCatalog asViewCatalog = null;
+  private TableCatalog sparkTableCatalog = null;
 
   private boolean createParquetAsIceberg = false;
   private boolean createAvroAsIceberg = false;
@@ -70,6 +78,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     optionsMap.putAll(options.asCaseSensitiveMap());
     optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
     optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
+    LOG.warn("The current spark conf {}", conf.get("spark.sql.catalog.spark_catalog"));
     return CatalogUtil.buildIcebergCatalog(name, optionsMap, conf);
   }
 
@@ -116,16 +125,15 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return catalog;
   }
 
-  protected  PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog, CaseInsensitiveStringMap options) {
-    Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+  protected  PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog) {
+    /* Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     optionsMap.putAll(options.asCaseSensitiveMap());
     optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
-    optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
+    optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser()); */
 
     // start hanging, need to investigate
-    RESTClient icebergRestClient = CatalogClientUtils.getRestClient((RESTCatalog) icebergCatalog);
-    OAuth2Util.AuthSession catalogAuth = CatalogClientUtils.getAuthSession((RESTCatalog) icebergCatalog);
-    PolarisRESTCatalogReflect catalog = new PolarisRESTCatalogReflect(icebergRestClient, catalogAuth, optionsMap);
+    RESTClientInfo clientInfo = CatalogClientUtils.extractIcebergRESTClientInfo((RESTCatalog) icebergCatalog);
+    PolarisRESTCatalogReflect catalog = new PolarisRESTCatalogReflect(clientInfo);
     return catalog;
   }
 
@@ -136,14 +144,37 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
 
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
+    LOG.warn("Initialize the SparkCatalog {}, and options {}", name, options);
     this.catalogName = name;
     this.icebergCatalog = buildIcebergCatalog(name, options);
     // this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
     // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
-    this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog, options);
+    this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog);
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;
+
+    // initialize the spark catalog
+    Configuration conf = SparkUtil.hadoopConfCatalogOverrides(SparkSession.active(), name);
+    String catalogImpl = conf.get(SPARK_CATALOG_KEY);
+
+    DynConstructors.Ctor<Catalog> ctor;
+    try {
+      ctor = DynConstructors.builder(Catalog.class).impl(catalogImpl, new Class[0]).buildChecked();
+    } catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException(String.format("Cannot initialize Catalog implementation %s: %s", catalogImpl, e.getMessage()), e);
+    }
+
+    try {
+      this.sparkTableCatalog = (TableCatalog)ctor.newInstance(new Object[0]);
+    } catch (ClassCastException e) {
+      throw new IllegalArgumentException(String.format("Cannot initialize Catalog, %s does not implement Catalog.", catalogImpl), e);
+    }
+
+    if (this.sparkTableCatalog instanceof CatalogExtension) {
+      LOG.warn("setup the delegate for catalog extension ");
+      ((CatalogExtension) this.sparkTableCatalog).setDelegateCatalog(this.sparkTableCatalog);
+    }
   }
 
   @Override
@@ -159,18 +190,26 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   @Override
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
-      throws TableAlreadyExistsException {
+      throws TableAlreadyExistsException, NoSuchNamespaceException {
     String provider = properties.get("provider");
     try {
-      return polarisCatalog.createTable(buildIdentifier(ident), provider, properties);
+      Table table = this.sparkTableCatalog.createTable(ident, schema, transforms, properties);
+      polarisCatalog.createTable(buildIdentifier(ident), provider, properties);
+      return table;
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(ident);
+    } catch (NoSuchNamespaceException e) {
+      throw new NoSuchNamespaceException(ident.namespace());
     }
   }
 
   @Override
   public Table alterTable(Identifier ident, TableChange... changes) throws NoSuchTableException {
-    throw new NoSuchTableException(ident);
+    if (this.sparkTableCatalog != null) {
+      return this.sparkTableCatalog.alterTable(ident, changes);
+    } else {
+      throw new NoSuchTableException(ident);
+    }
   }
 
   @Override
