@@ -36,6 +36,8 @@ dependencies {
   // implementation("org.apache.iceberg:iceberg-core:1.8.0")
   // implementation("org.apache.iceberg:iceberg-spark-3.5_2.12:1.8.0")
   implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.0")
+  implementation("io.unitycatalog:unitycatalog-spark_2.12:0.2.0")
+  implementation("io.delta:delta-spark_2.12:3.3.0")
   // implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12:1.8.0")
 
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${sparkMajorVersion}.2") {
