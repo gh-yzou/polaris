@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.spark;
 
+import com.google.common.collect.Maps;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -29,17 +30,20 @@ import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
-import org.apache.spark.sql.connector.catalog.Identifier;
-import org.apache.spark.sql.connector.catalog.Table;
-import org.apache.spark.sql.connector.catalog.TableCatalog;
-import org.apache.spark.sql.connector.catalog.TableChange;
+import org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.catalyst.catalog.CatalogTableType;
+import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.*;
+import scala.collection.JavaConverters;
 
-import java.util.Map;
+import java.net.URI;
+import java.util.*;
 
 public class GenericTableSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(GenericTableSparkCatalog.class);
@@ -65,9 +69,60 @@ public class GenericTableSparkCatalog implements TableCatalog {
   public Table loadTable(Identifier ident) throws NoSuchTableException {
     // should check iceberg first
     try {
-      return polarisCatalog.loadTable(buildIdentifier(ident));
+      PolarisSparkTable genericTable  = polarisCatalog.loadTable(buildIdentifier(ident));
+
+      Map<String, String> properties = genericTable.properties();
+      String format  = genericTable.format();
+      String location = properties.get(TableCatalog.PROP_LOCATION);
+      CatalogStorageFormat storageFormat = new CatalogStorageFormat(
+          Option.apply(new URI(location)),
+          Option.apply(format),
+          Option.apply(format),
+          Option.apply(null),
+          false,
+          JavaConverters.mapAsScalaMapConverter(properties).asScala().toMap(
+              Predef.<Tuple2<String, String>>conforms()
+          )
+      );
+
+      Map<String, String> emptyProperties = Maps.newHashMap();
+
+      List<String> emptyStringList = new ArrayList<>();
+      CatalogTable catalogTable = new CatalogTable(
+          Spark3Util.toV1TableIdentifier(ident),
+          CatalogTableType.MANAGED(),
+          storageFormat,
+          genericTable.schema(),
+          Option.apply(format),
+          JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
+              .asScala()
+              .toSeq(),
+          Option.apply(null),
+          "",
+          System.currentTimeMillis(),
+          -1,
+          "",
+          JavaConverters.mapAsScalaMapConverter(properties).asScala().toMap(
+              Predef.<Tuple2<String, String>>conforms()
+          ),
+          Option.apply(null),
+          Option.apply(null),
+          Option.apply(null),
+          JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
+              .asScala()
+              .toSeq(),
+          false,
+          true,
+          JavaConverters.mapAsScalaMapConverter(emptyProperties).asScala().toMap(
+              Predef.<Tuple2<String, String>>conforms()
+          ),
+          Option.apply(null)
+      );
+      return new V1Table(catalogTable);
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(ident);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

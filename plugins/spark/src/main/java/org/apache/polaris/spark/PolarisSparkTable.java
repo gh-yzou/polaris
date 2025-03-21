@@ -54,6 +54,7 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
     this.genericTable = genericTable;
   }
 
+  public String format() { return genericTable.getFormat();}
   @Override
   public String name() {
     return genericTable.getName();

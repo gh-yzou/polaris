@@ -25,8 +25,10 @@ import com.google.common.collect.Maps;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -51,6 +53,7 @@ import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
+import org.apache.iceberg.spark.Spark3Util;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.PropertyUtil;
@@ -60,8 +63,18 @@ import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.apache.polaris.spark.utils.RESTClientInfo;
+import org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.catalyst.catalog.CatalogTableType;
+import org.apache.spark.sql.connector.catalog.TableCatalog;
+import org.rocksdb.OptionString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Option;
+import scala.Predef;
+import scala.Tuple2;
+import scala.collection.JavaConverters;
+import scala.collection.JavaConverters.*;
 
 class PolarisRESTCatalogReflect implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
@@ -199,7 +212,6 @@ class PolarisRESTCatalogReflect implements Closeable {
         LoadGenericTableResponse.class,
         Maps.newHashMap(),
         ErrorHandlers.tableErrorHandler());
-
     PolarisGenericTable genericTable = new PolarisGenericTable(
         response.getTable().getName(),
         response.getTable().getFormat(),
