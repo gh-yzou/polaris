@@ -53,6 +53,7 @@ openApiGenerate {
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"
+  modelPackage = "org.apache.polaris.service.types"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
@@ -65,7 +66,8 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
-  // configOptions.put("generateBuilders", "true")
+  configOptions.put("generateBuilders", "true")
+  configOptions.put("generateConstructorWithAllArgs", "true")
   // configOptions.put("generateConstructorWithAllArgs", "true")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
@@ -108,9 +110,9 @@ openApiGenerate {
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
 
-      "CreateGenericTableRequest" to "org.apache.polaris.service.types.CreateGenericTableRequest",
-      "GenericTable" to "org.apache.polaris.service.types.GenericTable",
-      "LoadGenericTableResponse" to "org.apache.polaris.service.types.LoadGenericTableResponse",
+      // "CreateGenericTableRequest" to "org.apache.polaris.service.types.CreateGenericTableRequest",
+      // "GenericTable" to "org.apache.polaris.service.types.GenericTable",
+      // "LoadGenericTableResponse" to "org.apache.polaris.service.types.LoadGenericTableResponse",
     )
 }
 
