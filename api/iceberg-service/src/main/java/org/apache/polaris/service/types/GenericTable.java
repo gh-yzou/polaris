@@ -1,5 +1,6 @@
 package org.apache.polaris.service.types;
 
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.ArrayList;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -29,12 +30,16 @@ import java.util.Map;
 import io.swagger.annotations.*;
 
 
-@ApiModel(description="Generic Table information. - `name` name for the generic table - `format` format for the generic table, i.e. \"delta\", \"csv\" - `properties` properties for the generic table passed on creation - `doc` comment or description for the generic table ")@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen", date = "2025-03-24T18:34:39.856058-07:00[America/Los_Angeles]", comments = "Generator version: 7.12.0")public class GenericTable   {
+public class GenericTable {
 
-  private final String name;
-  private final String format;
-  private final String doc;
-  private final Map<String, String> properties;
+  private String name;
+  private String format;
+  private Map<String, String> properties;
+  private String doc;
+  private Long catalogRegisterAt;
+
+  public GenericTable() {}
+
     /**
      **/
     @ApiModelProperty(required = true, value = "")
@@ -54,6 +59,14 @@ import io.swagger.annotations.*;
     /**
      **/
     @ApiModelProperty(value = "")
+    @JsonProperty(value = "properties")
+    public Map<String, String> getProperties() {
+        return properties;
+    }
+    
+    /**
+     **/
+    @ApiModelProperty(value = "")
     @JsonProperty(value = "doc")
     public String getDoc() {
         return doc;
@@ -62,25 +75,27 @@ import io.swagger.annotations.*;
     /**
      **/
     @ApiModelProperty(value = "")
-    @JsonProperty(value = "properties")
-    public Map<String, String> getProperties() {
-        return properties;
+    @JsonProperty(value = "catalog_register_at")
+    public Long getCatalogRegisterAt() {
+        return catalogRegisterAt;
     }
     
     @JsonCreator
-    public GenericTable(@JsonProperty("name") String name, @JsonProperty("format") String format, @JsonProperty("doc") String doc, @JsonProperty("properties") Map<String, String> properties) {
+    public GenericTable(@JsonProperty(value = "name") String name, @JsonProperty(value = "format") String format, @JsonProperty(value = "properties") Map<String, String> properties, @JsonProperty(value = "doc") String doc, @JsonProperty(value = "catalog_register_at") Long catalogRegisterAt) {
         this.name = name;
         this.format = format;
-        this.doc = doc;
         this.properties = Objects.requireNonNullElse(properties, new HashMap<>());
+        this.doc = doc;
+        this.catalogRegisterAt = catalogRegisterAt;
     }
 
 
     public GenericTable(String name, String format) {
         this.name = name;
         this.format = format;
-        this.doc = null;
         this.properties = new HashMap<>();
+        this.doc = null;
+        this.catalogRegisterAt = null;
     }
 
     public static Builder builder() {
@@ -94,8 +109,9 @@ import io.swagger.annotations.*;
     public static final class Builder {
       private String name;
       private String format;
-      private String doc;
       private Map<String, String> properties;
+      private String doc;
+      private Long catalogRegisterAt;
       private Builder() {
       }
       private Builder(String name, String format) {
@@ -111,18 +127,22 @@ import io.swagger.annotations.*;
         this.format = format;
         return this;
       }
+      public Builder setProperties(Map<String, String> properties) {
+        this.properties = properties;
+        return this;
+      }
       public Builder setDoc(String doc) {
         this.doc = doc;
         return this;
       }
-      public Builder setProperties(Map<String, String> properties) {
-        this.properties = properties;
+      public Builder setCatalogRegisterAt(Long catalogRegisterAt) {
+        this.catalogRegisterAt = catalogRegisterAt;
         return this;
       }
 
 
       public GenericTable build() {
-        GenericTable inst = new GenericTable(name, format, doc, properties);
+        GenericTable inst = new GenericTable(name, format, properties, doc, catalogRegisterAt);
         return inst;
       }
     }
@@ -138,13 +158,14 @@ import io.swagger.annotations.*;
     GenericTable genericTable = (GenericTable) o;
     return Objects.equals(this.name, genericTable.name) &&
         Objects.equals(this.format, genericTable.format) &&
+        Objects.equals(this.properties, genericTable.properties) &&
         Objects.equals(this.doc, genericTable.doc) &&
-        Objects.equals(this.properties, genericTable.properties);
+        Objects.equals(this.catalogRegisterAt, genericTable.catalogRegisterAt);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, format, doc, properties);
+    return Objects.hash(name, format, properties, doc, catalogRegisterAt);
   }
 
   @Override
@@ -154,8 +175,9 @@ import io.swagger.annotations.*;
     
     sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    format: ").append(toIndentedString(format)).append("\n");
-    sb.append("    doc: ").append(toIndentedString(doc)).append("\n");
     sb.append("    properties: ").append(toIndentedString(properties)).append("\n");
+    sb.append("    doc: ").append(toIndentedString(doc)).append("\n");
+    sb.append("    catalogRegisterAt: ").append(toIndentedString(catalogRegisterAt)).append("\n");
     sb.append("}");
     return sb.toString();
   }

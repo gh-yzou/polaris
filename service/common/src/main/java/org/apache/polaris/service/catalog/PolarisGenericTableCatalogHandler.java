@@ -113,7 +113,7 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
         .setName(table.getName())
         .setFormat(table.getFormat())
         .setProperties(table.getProperties())
-        .setCatalogRegisterAt(table.getRegisterTimeStamp())
+        // .setCatalogRegisterAt(table.getRegisterTimeStamp())
         .build();
     LoadGenericTableResponse response = LoadGenericTableResponse.builder().setTable(genericTable).build();
     return response;
@@ -129,7 +129,7 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
         .setName(table.getName())
         .setFormat(table.getFormat())
         .setProperties(table.getProperties())
-        .setCatalogRegisterAt(table.getRegisterTimeStamp())
+        // .setCatalogRegisterAt(table.getRegisterTimeStamp())
         .build();
     return LoadGenericTableResponse.builder().setTable(genericTable).build();
   }

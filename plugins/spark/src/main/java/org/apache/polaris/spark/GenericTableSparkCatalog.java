@@ -67,6 +67,7 @@ public class GenericTableSparkCatalog implements TableCatalog {
 
   @Override
   public Table loadTable(Identifier ident) throws NoSuchTableException {
+    LOG.warn("Load table for {}", ident);
     // should check iceberg first
     try {
       PolarisSparkTable genericTable  = polarisCatalog.loadTable(buildIdentifier(ident));
@@ -90,9 +91,9 @@ public class GenericTableSparkCatalog implements TableCatalog {
       List<String> emptyStringList = new ArrayList<>();
       CatalogTable catalogTable = new CatalogTable(
           Spark3Util.toV1TableIdentifier(ident),
-          CatalogTableType.MANAGED(),
+          CatalogTableType.MANAGED(),   // should use unity catalog logic to look into properties
           storageFormat,
-          genericTable.schema(),
+          new StructType(),
           Option.apply(format),
           JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
               .asScala()

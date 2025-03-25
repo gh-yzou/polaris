@@ -225,6 +225,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
+    LOG.warn("Create table with identifier {}, schema {}, transforms {} and properties {}",
+        ident, schema, transforms, properties);
     String provider = properties.get("provider");
     try {
       if (this.sparkTableCatalog != null) {
