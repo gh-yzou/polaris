@@ -29,28 +29,26 @@ import org.apache.polaris.service.types.GenericTable;
 import io.swagger.annotations.*;
 
 
-public class LoadGenericTableResponse implements RESTResponse {
+@ApiModel(description="Result used when a table is successfully loaded.")@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen", date = "2025-03-24T18:34:39.856058-07:00[America/Los_Angeles]", comments = "Generator version: 7.12.0")public class LoadGenericTableResponse  implements RESTResponse {
 
-  private GenericTable table;
+  private final GenericTable table;
+
+  @Override
+  public void validate() {}
     /**
      **/
     @ApiModelProperty(required = true, value = "")
-    @JsonProperty(value = "table")
+    @JsonProperty(value = "table", required = true)
     public GenericTable getTable() {
         return table;
     }
-
-    // public LoadGenericTableResponse() {
-      // Required for Jackson deserialization
-    // }
-
+    
     @JsonCreator
-    public LoadGenericTableResponse(@JsonProperty(value = "table") GenericTable table) {
+    public LoadGenericTableResponse(@JsonProperty("table") GenericTable table) {
         this.table = table;
     }
 
-    @Override
-    public void validate() {}
+
 
     public static Builder builder() {
         return new Builder();

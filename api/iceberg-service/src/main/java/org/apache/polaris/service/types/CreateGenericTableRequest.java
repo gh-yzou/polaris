@@ -30,16 +30,15 @@ import io.swagger.annotations.*;
 import org.apache.iceberg.rest.RESTRequest;
 
 
-public class CreateGenericTableRequest implements RESTRequest {
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen", date = "2025-03-24T18:34:39.856058-07:00[America/Los_Angeles]", comments = "Generator version: 7.12.0")public class CreateGenericTableRequest implements RESTRequest {
 
   private final String name;
   private final String format;
-  private final Map<String, String> properties;
   private final String doc;
+  private final Map<String, String> properties;
 
-    @Override
-    public void validate() {}
-
+  @Override
+  public void validate() {}
     /**
      **/
     @ApiModelProperty(required = true, value = "")
@@ -59,33 +58,33 @@ public class CreateGenericTableRequest implements RESTRequest {
     /**
      **/
     @ApiModelProperty(value = "")
-    @JsonProperty(value = "properties")
-    public Map<String, String> getProperties() {
-        return properties;
-    }
-    
-    /**
-     **/
-    @ApiModelProperty(value = "")
     @JsonProperty(value = "doc")
     public String getDoc() {
         return doc;
     }
     
+    /**
+     **/
+    @ApiModelProperty(value = "")
+    @JsonProperty(value = "properties")
+    public Map<String, String> getProperties() {
+        return properties;
+    }
+    
     @JsonCreator
-    public CreateGenericTableRequest(@JsonProperty(value = "name", required = true) String name, @JsonProperty(value = "format", required = true) String format, @JsonProperty(value = "properties") Map<String, String> properties, @JsonProperty(value = "doc") String doc) {
+    public CreateGenericTableRequest(@JsonProperty("name") String name, @JsonProperty("format") String format, @JsonProperty("doc") String doc, @JsonProperty("properties") Map<String, String> properties) {
         this.name = name;
         this.format = format;
-        this.properties = Objects.requireNonNullElse(properties, new HashMap<>());
         this.doc = doc;
+        this.properties = Objects.requireNonNullElse(properties, new HashMap<>());
     }
 
 
     public CreateGenericTableRequest(String name, String format) {
         this.name = name;
         this.format = format;
-        this.properties = new HashMap<>();
         this.doc = null;
+        this.properties = new HashMap<>();
     }
 
     public static Builder builder() {
@@ -99,8 +98,8 @@ public class CreateGenericTableRequest implements RESTRequest {
     public static final class Builder {
       private String name;
       private String format;
-      private Map<String, String> properties;
       private String doc;
+      private Map<String, String> properties;
       private Builder() {
       }
       private Builder(String name, String format) {
@@ -116,18 +115,18 @@ public class CreateGenericTableRequest implements RESTRequest {
         this.format = format;
         return this;
       }
-      public Builder setProperties(Map<String, String> properties) {
-        this.properties = properties;
-        return this;
-      }
       public Builder setDoc(String doc) {
         this.doc = doc;
+        return this;
+      }
+      public Builder setProperties(Map<String, String> properties) {
+        this.properties = properties;
         return this;
       }
 
 
       public CreateGenericTableRequest build() {
-        CreateGenericTableRequest inst = new CreateGenericTableRequest(name, format, properties, doc);
+        CreateGenericTableRequest inst = new CreateGenericTableRequest(name, format, doc, properties);
         return inst;
       }
     }
@@ -143,13 +142,13 @@ public class CreateGenericTableRequest implements RESTRequest {
     CreateGenericTableRequest createGenericTableRequest = (CreateGenericTableRequest) o;
     return Objects.equals(this.name, createGenericTableRequest.name) &&
         Objects.equals(this.format, createGenericTableRequest.format) &&
-        Objects.equals(this.properties, createGenericTableRequest.properties) &&
-        Objects.equals(this.doc, createGenericTableRequest.doc);
+        Objects.equals(this.doc, createGenericTableRequest.doc) &&
+        Objects.equals(this.properties, createGenericTableRequest.properties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, format, properties, doc);
+    return Objects.hash(name, format, doc, properties);
   }
 
   @Override
@@ -159,8 +158,8 @@ public class CreateGenericTableRequest implements RESTRequest {
     
     sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    format: ").append(toIndentedString(format)).append("\n");
-    sb.append("    properties: ").append(toIndentedString(properties)).append("\n");
     sb.append("    doc: ").append(toIndentedString(doc)).append("\n");
+    sb.append("    properties: ").append(toIndentedString(properties)).append("\n");
     sb.append("}");
     return sb.toString();
   }
