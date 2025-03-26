@@ -53,6 +53,8 @@ import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
+import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
+import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,19 +151,14 @@ class PolarisRESTCatalog implements Closeable {
   public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
     LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
     // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
-    CreateGenericTableRequest request =
-        CreateGenericTableRequest.builder()
-            .setName(ident.name())
-            .setProperties(props)
-            .setFormat(format)
-            .build();
+    CreateGenericTableRESTRequest request = new CreateGenericTableRESTRequest(ident.name(), format, null, props);
 
     LOG.warn("Create Table REQUEST path {} request {}", paths.genericTables(ident.namespace()), request);
-    LoadGenericTableResponse response =
+    LoadGenericTableRESTResponse response =
         restClient.post(
             paths.genericTables(ident.namespace()),
             request,
-            LoadGenericTableResponse.class,
+            LoadGenericTableRESTResponse.class,
             Maps.newHashMap(),
             ErrorHandlers.tableErrorHandler());
 
@@ -184,10 +181,10 @@ class PolarisRESTCatalog implements Closeable {
                 "Unable to load table %s: Server does not support endpoint %s",
                 identifier, PolarisEndpoints.V1_LOAD_GENERIC_TABLE));
     checkIdentifierIsValid(identifier);
-    LoadGenericTableResponse response = restClient.get(
+    LoadGenericTableRESTResponse response = restClient.get(
         paths.genericTable(identifier),
         null,
-        LoadGenericTableResponse.class,
+        LoadGenericTableRESTResponse.class,
         Maps.newHashMap(),
         ErrorHandlers.tableErrorHandler());
 

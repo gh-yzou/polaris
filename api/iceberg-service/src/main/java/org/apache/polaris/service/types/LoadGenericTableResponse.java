@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
-import org.apache.iceberg.rest.RESTResponse;
 import org.apache.polaris.service.types.GenericTable;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -29,28 +28,27 @@ import org.apache.polaris.service.types.GenericTable;
 import io.swagger.annotations.*;
 
 
-public class LoadGenericTableResponse implements RESTResponse {
+@ApiModel(description="Result used when a table is successfully loaded.")@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen", date = "2025-03-26T10:48:38.764604-07:00[America/Los_Angeles]", comments = "Generator version: 7.12.0")public class LoadGenericTableResponse   {
 
   private GenericTable table;
     /**
      **/
     @ApiModelProperty(required = true, value = "")
-    @JsonProperty(value = "table")
+    @JsonProperty(value = "table", required = true)
     public GenericTable getTable() {
         return table;
     }
-
+    
     public LoadGenericTableResponse() {
-      // Required for Jackson deserialization
+       // needed by jackson deserialization
     }
 
     @JsonCreator
-    public LoadGenericTableResponse(@JsonProperty(value = "table") GenericTable table) {
+    public LoadGenericTableResponse(@JsonProperty(value = "table", required = true) GenericTable table) {
         this.table = table;
     }
 
-    @Override
-    public void validate() {}
+
 
     public static Builder builder() {
         return new Builder();
