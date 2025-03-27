@@ -25,8 +25,9 @@ import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonFactory;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.cfg.ConstructorDetector;
 
-class PolarisRESTObjectMapper {
+public class PolarisRESTObjectMapper {
   private static final JsonFactory FACTORY = new JsonFactory();
   private static final ObjectMapper MAPPER;
   private static volatile boolean isInitialized;
@@ -50,7 +51,7 @@ class PolarisRESTObjectMapper {
   }
 
   static {
-    MAPPER = new ObjectMapper(FACTORY);
+    MAPPER = new ObjectMapper(FACTORY).setConstructorDetector(ConstructorDetector.USE_PROPERTIES_BASED);
     isInitialized = false;
   }
 }

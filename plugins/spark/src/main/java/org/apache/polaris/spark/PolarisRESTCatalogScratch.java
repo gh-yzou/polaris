@@ -48,6 +48,7 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
@@ -189,7 +190,13 @@ public class PolarisRESTCatalogScratch implements Configurable<Object>, Closeabl
                 .oauth2ServerUri(oauth2ServerUri)
                 .optionalOAuthParams(optionalOAuthParams)
                 .build());
-    this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
+    this.restClient = PolarisHTTPClient
+        .builder(mergedProps)
+        .uri(mergedProps.get(CatalogProperties.URI))
+        .withObjectMapper(new ObjectMapper())
+        .build()
+        .withAuthSession(catalogAuth);
+    // this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
     if (authResponse != null) {
       this.catalogAuth =
           OAuth2Util.AuthSession.fromTokenResponse(

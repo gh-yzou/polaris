@@ -258,7 +258,7 @@ public class PolarisHTTPClient extends BaseHTTPClient {
               });
         } else {
           try {
-            LOG.warn("");
+            LOG.warn("The responseBody to parse {}", responseBody);
             return (T) (this.mapper.readValue(responseBody, responseType));
           } catch (JsonProcessingException e) {
             throw new RESTException(
@@ -369,7 +369,7 @@ public class PolarisHTTPClient extends BaseHTTPClient {
     private final Map<String, String> properties;
     private final Map<String, String> baseHeaders = Maps.newHashMap();
     private URI uri;
-    private ObjectMapper mapper = new ObjectMapper();
+    private ObjectMapper mapper = PolarisRESTObjectMapper.mapper();
     private HttpHost proxy;
     private CredentialsProvider proxyCredentialsProvider;
     private AuthSession authSession;

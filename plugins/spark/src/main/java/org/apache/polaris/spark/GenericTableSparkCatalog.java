@@ -43,11 +43,11 @@ import scala.collection.JavaConverters;
 public class GenericTableSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(GenericTableSparkCatalog.class);
 
-  private PolarisRESTCatalogReflect polarisCatalog = null;
-  // private PolarisRESTCatalogScratch polarisCatalog = null;
+  // private PolarisRESTCatalogReflect polarisCatalog = null;
+  private PolarisRESTCatalogScratch polarisCatalog = null;
   private String catalogName = null;
 
-  public GenericTableSparkCatalog(PolarisRESTCatalogReflect polarisCatalog) {
+  public GenericTableSparkCatalog(PolarisRESTCatalogScratch polarisCatalog) {
     this.polarisCatalog = polarisCatalog;
   }
 

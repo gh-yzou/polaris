@@ -28,7 +28,7 @@ public class LoadGenericTableRESTResponse extends LoadGenericTableResponse imple
   // public LoadGenericTableRESTResponse() {}
 
   @JsonCreator
-  public LoadGenericTableRESTResponse(@JsonProperty(value = "table")GenericTable table) {
+  public LoadGenericTableRESTResponse(@JsonProperty(value = "table") GenericTable table) {
       super(table);
   }
 

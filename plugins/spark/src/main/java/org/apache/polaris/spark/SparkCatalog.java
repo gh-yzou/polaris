@@ -158,7 +158,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
     // this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog);
     this.genericTableSparkCatalog =
-        new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog, options));
+        // new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog, options));
+        new GenericTableSparkCatalog(buildPolarisCatalogScratch(name, options));
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;
