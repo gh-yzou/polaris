@@ -19,14 +19,12 @@
 package org.apache.polaris.spark;
 
 import com.google.common.collect.Maps;
-import org.apache.iceberg.catalog.Catalog;
+import java.net.URI;
+import java.util.*;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
-import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.spark.Spark3Util;
-import org.apache.polaris.spark.utils.CatalogClientUtils;
-import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
@@ -42,13 +40,11 @@ import org.slf4j.LoggerFactory;
 import scala.*;
 import scala.collection.JavaConverters;
 
-import java.net.URI;
-import java.util.*;
-
 public class GenericTableSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(GenericTableSparkCatalog.class);
 
   private PolarisRESTCatalogReflect polarisCatalog = null;
+  // private PolarisRESTCatalogScratch polarisCatalog = null;
   private String catalogName = null;
 
   public GenericTableSparkCatalog(PolarisRESTCatalogReflect polarisCatalog) {
@@ -70,55 +66,51 @@ public class GenericTableSparkCatalog implements TableCatalog {
     LOG.warn("Load table for {}", ident);
     // should check iceberg first
     try {
-      PolarisSparkTable genericTable  = polarisCatalog.loadTable(buildIdentifier(ident));
+      PolarisSparkTable genericTable = polarisCatalog.loadTable(buildIdentifier(ident));
 
       Map<String, String> properties = genericTable.properties();
-      String format  = genericTable.format();
+      String format = genericTable.format();
       String location = properties.get(TableCatalog.PROP_LOCATION);
-      CatalogStorageFormat storageFormat = new CatalogStorageFormat(
-          Option.apply(new URI(location)),
-          Option.apply(format),
-          Option.apply(format),
-          Option.apply(null),
-          false,
-          JavaConverters.mapAsScalaMapConverter(properties).asScala().toMap(
-              Predef.<Tuple2<String, String>>conforms()
-          )
-      );
+      CatalogStorageFormat storageFormat =
+          new CatalogStorageFormat(
+              Option.apply(new URI(location)),
+              Option.apply(format),
+              Option.apply(format),
+              Option.apply(null),
+              false,
+              JavaConverters.mapAsScalaMapConverter(properties)
+                  .asScala()
+                  .toMap(Predef.<Tuple2<String, String>>conforms()));
 
       Map<String, String> emptyProperties = Maps.newHashMap();
 
       List<String> emptyStringList = new ArrayList<>();
-      CatalogTable catalogTable = new CatalogTable(
-          Spark3Util.toV1TableIdentifier(ident),
-          CatalogTableType.MANAGED(),   // should use unity catalog logic to look into properties
-          storageFormat,
-          new StructType(),
-          Option.apply(format),
-          JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
-              .asScala()
-              .toSeq(),
-          Option.apply(null),
-          "",
-          System.currentTimeMillis(),
-          -1,
-          "",
-          JavaConverters.mapAsScalaMapConverter(properties).asScala().toMap(
-              Predef.<Tuple2<String, String>>conforms()
-          ),
-          Option.apply(null),
-          Option.apply(null),
-          Option.apply(null),
-          JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
-              .asScala()
-              .toSeq(),
-          false,
-          true,
-          JavaConverters.mapAsScalaMapConverter(emptyProperties).asScala().toMap(
-              Predef.<Tuple2<String, String>>conforms()
-          ),
-          Option.apply(null)
-      );
+      CatalogTable catalogTable =
+          new CatalogTable(
+              Spark3Util.toV1TableIdentifier(ident),
+              CatalogTableType.MANAGED(), // should use unity catalog logic to look into properties
+              storageFormat,
+              new StructType(),
+              Option.apply(format),
+              JavaConverters.asScalaIteratorConverter(emptyStringList.iterator()).asScala().toSeq(),
+              Option.apply(null),
+              "",
+              System.currentTimeMillis(),
+              -1,
+              "",
+              JavaConverters.mapAsScalaMapConverter(properties)
+                  .asScala()
+                  .toMap(Predef.<Tuple2<String, String>>conforms()),
+              Option.apply(null),
+              Option.apply(null),
+              Option.apply(null),
+              JavaConverters.asScalaIteratorConverter(emptyStringList.iterator()).asScala().toSeq(),
+              false,
+              true,
+              JavaConverters.mapAsScalaMapConverter(emptyProperties)
+                  .asScala()
+                  .toMap(Predef.<Tuple2<String, String>>conforms()),
+              Option.apply(null));
       return new V1Table(catalogTable);
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(ident);

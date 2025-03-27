@@ -69,6 +69,7 @@ dependencyResolutionManagement {
   repositories {
     mavenCentral()
     gradlePluginPortal()
+    flatDir { dirs("libs") }
   }
 }
 

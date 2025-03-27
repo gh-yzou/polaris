@@ -18,17 +18,14 @@
  */
 package org.apache.polaris.spark;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.*;
-
-import io.unitycatalog.spark.UCSingleCatalog;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -38,16 +35,13 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.Spark3Util;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.polaris.spark.utils.CatalogClientUtils;
+import org.apache.polaris.spark.utils.PolarisHTTPClient;
 import org.apache.polaris.spark.utils.RESTClientInfo;
-import org.apache.spark.sql.DataFrameWriter;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -71,6 +65,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   // private org.apache.spark.sql.catalog.
   // private PolarisRESTCatalogScratch polarisCatalog = null;
   // private PolarisRESTCatalogReflect polarisCatalog = null;
+  ObjectMapper mapper = new ObjectMapper();
   private GenericTableSparkCatalog genericTableSparkCatalog = null;
   private String[] defaultNamespace = null;
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;
@@ -115,7 +110,6 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
       return catalog;
     } catch (Exception e) {
       throw new RuntimeException("Failed to initialize PolarisRESTClient", e);
-
     }
   }
 
@@ -134,14 +128,18 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return catalog;
   }
 
-  protected  PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog) {
+  protected PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog, CaseInsensitiveStringMap options) {
     /* Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     optionsMap.putAll(options.asCaseSensitiveMap());
     optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
     optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser()); */
 
     // start hanging, need to investigate
-    RESTClientInfo clientInfo = CatalogClientUtils.extractIcebergRESTClientInfo((RESTCatalog) icebergCatalog);
+    // PolarisHTTPClient httpClient = PolarisHTTPClient.builder(options).uri(options.get(CatalogProperties.URI)).build();
+    RESTClientInfo clientInfo =
+        CatalogClientUtils.extractIcebergRESTClientInfo((RESTCatalog) icebergCatalog);
+    // httpClient.withAuthSession(clientInfo.getCatalogAuth());
+    // clientInfo.setRestClient(httpClient);
     PolarisRESTCatalogReflect catalog = new PolarisRESTCatalogReflect(clientInfo);
     return catalog;
   }
@@ -159,7 +157,8 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     // this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
     // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
     // this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog);
-    this.genericTableSparkCatalog = new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog));
+    this.genericTableSparkCatalog =
+        new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog, options));
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;
@@ -172,13 +171,18 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     try {
       ctor = DynConstructors.builder(Catalog.class).impl(catalogImpl, new Class[0]).buildChecked();
     } catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException(String.format("Cannot initialize Catalog implementation %s: %s", catalogImpl, e.getMessage()), e);
+      throw new IllegalArgumentException(
+          String.format(
+              "Cannot initialize Catalog implementation %s: %s", catalogImpl, e.getMessage()),
+          e);
     }
 
     try {
-      this.sparkTableCatalog = (TableCatalog)ctor.newInstance(new Object[0]);
+      this.sparkTableCatalog = (TableCatalog) ctor.newInstance(new Object[0]);
     } catch (ClassCastException e) {
-      throw new IllegalArgumentException(String.format("Cannot initialize Catalog, %s does not implement Catalog.", catalogImpl), e);
+      throw new IllegalArgumentException(
+          String.format("Cannot initialize Catalog, %s does not implement Catalog.", catalogImpl),
+          e);
     }
 
     // UCSingleCatalog ucSingleCatalog = new UCSingleCatalog();
@@ -197,10 +201,11 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
         Method method = sparkTableCatalog.getClass().getDeclaredMethod(methodGetName);
         method.setAccessible(true);
         method.invoke(sparkTableCatalog);
-        // sparkTableCatalog.getClass().getMethod("isUnityCatalog").invoke(sparkTableCatalog); // force init in case it's a lazy val
+        // sparkTableCatalog.getClass().getMethod("isUnityCatalog").invoke(sparkTableCatalog); //
+        // force init in case it's a lazy val
         // LOG.warn("the isUnityCatalog have value before {}", field.get(sparkTableCatalog) );
         field.set(sparkTableCatalog, true);
-        LOG.warn("the isUnityCatalog have value {}", field.get(sparkTableCatalog) );
+        LOG.warn("the isUnityCatalog have value {}", field.get(sparkTableCatalog));
       } catch (Exception e) {
         throw new RuntimeException("Failed to set the isUnityCatalog field", e);
       }
@@ -225,8 +230,12 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
-    LOG.warn("Create table with identifier {}, schema {}, transforms {} and properties {}",
-        ident, schema, transforms, properties);
+    LOG.warn(
+        "Create table with identifier {}, schema {}, transforms {} and properties {}",
+        ident,
+        schema,
+        transforms,
+        properties);
     String provider = properties.get("provider");
     try {
       if (this.sparkTableCatalog != null) {

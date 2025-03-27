@@ -1,12 +1,3 @@
-package org.apache.polaris.service.types;
-
-import java.util.Objects;
-import java.util.ArrayList;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
-import org.apache.polaris.service.types.GenericTable;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -25,58 +16,68 @@ import org.apache.polaris.service.types.GenericTable;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.types;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.*;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import java.util.Objects;
 
-
-@ApiModel(description="Result used when a table is successfully loaded.")@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen", date = "2025-03-26T10:48:38.764604-07:00[America/Los_Angeles]", comments = "Generator version: 7.12.0")public class LoadGenericTableResponse   {
+@ApiModel(description = "Result used when a table is successfully loaded.")
+@jakarta.annotation.Generated(
+    value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",
+    date = "2025-03-26T10:48:38.764604-07:00[America/Los_Angeles]",
+    comments = "Generator version: 7.12.0")
+public class LoadGenericTableResponse {
 
   private GenericTable table;
-    /**
-     **/
-    @ApiModelProperty(required = true, value = "")
-    @JsonProperty(value = "table", required = true)
-    public GenericTable getTable() {
-        return table;
+
+  /** */
+  @ApiModelProperty(required = true, value = "")
+  @JsonProperty(value = "table", required = true)
+  public GenericTable getTable() {
+    return table;
+  }
+
+  // public LoadGenericTableResponse() {
+  // needed by jackson deserialization
+  // }
+
+  @JsonCreator
+  public LoadGenericTableResponse(
+      @JsonProperty(value = "table", required = true) GenericTable table) {
+    this.table = table;
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static Builder builder(GenericTable table) {
+    return new Builder(table);
+  }
+
+  public static final class Builder {
+    private GenericTable table;
+
+    private Builder() {}
+
+    private Builder(GenericTable table) {
+      this.table = table;
     }
-    
-    public LoadGenericTableResponse() {
-       // needed by jackson deserialization
+
+    public Builder setTable(GenericTable table) {
+      this.table = table;
+      return this;
     }
 
-    @JsonCreator
-    public LoadGenericTableResponse(@JsonProperty(value = "table", required = true) GenericTable table) {
-        this.table = table;
+    public LoadGenericTableResponse build() {
+      LoadGenericTableResponse inst = new LoadGenericTableResponse(table);
+      return inst;
     }
-
-
-
-    public static Builder builder() {
-        return new Builder();
-    }
-    public static Builder builder(GenericTable table) {
-        return new Builder(table);
-    }
-
-
-    public static final class Builder {
-      private GenericTable table;
-      private Builder() {
-      }
-      private Builder(GenericTable table) {
-        this.table = table;
-      }
-
-      public Builder setTable(GenericTable table) {
-        this.table = table;
-        return this;
-      }
-
-
-      public LoadGenericTableResponse build() {
-        LoadGenericTableResponse inst = new LoadGenericTableResponse(table);
-        return inst;
-      }
-    }
+  }
 
   @Override
   public boolean equals(Object o) {
@@ -99,15 +100,14 @@ import io.swagger.annotations.*;
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("class LoadGenericTableResponse {\n");
-    
+
     sb.append("    table: ").append(toIndentedString(table)).append("\n");
     sb.append("}");
     return sb.toString();
   }
 
   /**
-   * Convert the given object to string with each line indented by 4 spaces
-   * (except the first line).
+   * Convert the given object to string with each line indented by 4 spaces (except the first line).
    */
   private String toIndentedString(Object o) {
     if (o == null) {

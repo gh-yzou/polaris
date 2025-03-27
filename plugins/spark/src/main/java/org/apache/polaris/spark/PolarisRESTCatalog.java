@@ -19,40 +19,23 @@
 package org.apache.polaris.spark;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-
-import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.hadoop.Configurable;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.auth.OAuth2Util;
-import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
-import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
-import org.apache.iceberg.util.EnvironmentUtil;
-import org.apache.iceberg.util.Pair;
-import org.apache.iceberg.util.PropertyUtil;
-import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
-import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
 import org.slf4j.Logger;
@@ -148,12 +131,15 @@ class PolarisRESTCatalog implements Closeable {
     }
   }
 
-  public PolarisSparkTable createTable(TableIdentifier ident, String format, Map<String, String> props) {
+  public PolarisSparkTable createTable(
+      TableIdentifier ident, String format, Map<String, String> props) {
     LOG.warn("Create Table {} using format {} with properties {}", ident, format, props);
     // Endpoint.check(endpoints, PolarisEndpoints.V1_CREATE_GENERIC_TABLE);
-    CreateGenericTableRESTRequest request = new CreateGenericTableRESTRequest(ident.name(), format, null, props);
+    CreateGenericTableRESTRequest request =
+        new CreateGenericTableRESTRequest(ident.name(), format, null, props);
 
-    LOG.warn("Create Table REQUEST path {} request {}", paths.genericTables(ident.namespace()), request);
+    LOG.warn(
+        "Create Table REQUEST path {} request {}", paths.genericTables(ident.namespace()), request);
     LoadGenericTableRESTResponse response =
         restClient.post(
             paths.genericTables(ident.namespace()),
@@ -162,11 +148,12 @@ class PolarisRESTCatalog implements Closeable {
             Maps.newHashMap(),
             ErrorHandlers.tableErrorHandler());
 
-    PolarisGenericTable genericTable = new PolarisGenericTable(
-        response.getTable().getName(),
-        response.getTable().getFormat(),
-        response.getTable().getProperties(),
-        10);
+    PolarisGenericTable genericTable =
+        new PolarisGenericTable(
+            response.getTable().getName(),
+            response.getTable().getFormat(),
+            response.getTable().getProperties(),
+            10);
 
     return new PolarisSparkTable(genericTable);
   }
@@ -181,18 +168,20 @@ class PolarisRESTCatalog implements Closeable {
                 "Unable to load table %s: Server does not support endpoint %s",
                 identifier, PolarisEndpoints.V1_LOAD_GENERIC_TABLE));
     checkIdentifierIsValid(identifier);
-    LoadGenericTableRESTResponse response = restClient.get(
-        paths.genericTable(identifier),
-        null,
-        LoadGenericTableRESTResponse.class,
-        Maps.newHashMap(),
-        ErrorHandlers.tableErrorHandler());
+    LoadGenericTableRESTResponse response =
+        restClient.get(
+            paths.genericTable(identifier),
+            null,
+            LoadGenericTableRESTResponse.class,
+            Maps.newHashMap(),
+            ErrorHandlers.tableErrorHandler());
 
-    PolarisGenericTable genericTable = new PolarisGenericTable(
-        response.getTable().getName(),
-        response.getTable().getFormat(),
-        response.getTable().getProperties(),
-        10);
+    PolarisGenericTable genericTable =
+        new PolarisGenericTable(
+            response.getTable().getName(),
+            response.getTable().getFormat(),
+            response.getTable().getProperties(),
+            10);
 
     return new PolarisSparkTable(genericTable);
   }

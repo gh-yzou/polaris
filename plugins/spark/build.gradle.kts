@@ -19,7 +19,10 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-plugins { id("polaris-client") }
+plugins {
+  id("polaris-client")
+  alias(libs.plugins.jandex)
+}
 
 val sparkMajorVersion = "3.5"
 val scalaVersion = "2.12"
@@ -35,7 +38,8 @@ dependencies {
   // implementation("org.apache.iceberg:iceberg-api:1.8.0")
   // implementation("org.apache.iceberg:iceberg-core:1.8.0")
   // implementation("org.apache.iceberg:iceberg-spark-3.5_2.12:1.8.0")
-  implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.0")
+  // implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.0")
+  implementation(files("../../libs/iceberg-spark-runtime-3.5_2.12-1.9.0-SNAPSHOT.jar"))
   implementation("io.unitycatalog:unitycatalog-spark_2.12:0.2.0")
   implementation("io.delta:delta-spark_2.12:3.3.0")
   // implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12:1.8.0")
@@ -47,9 +51,9 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
-  // implementation("com.fasterxml.jackson.core:jackson-annotations")
-  // implementation("com.fasterxml.jackson.core:jackson-core")
-  // implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
   // spark dependencies
 }
 
@@ -59,6 +63,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   // duplicatesStrategy = DuplicatesStrategy.INCLUDE
   archiveBaseName = "polaris-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
+  isZip64 = true
 
   dependencies { exclude("META-INF/**") }
 
@@ -72,7 +77,8 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   // exclude("META-INF/*.RSA")
 
   // Optional: Minimize the JAR (remove unused classes from dependencies)
-  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-*.*:.*")) }
+  // minimize { exclude(dependency("iceberg-spark-*.*:.*")) }
+  // minimize { exclude(dependency(files("iceberg-spark-runtime-3.5_2.12-1.9.0-SNAPSHOT.jar"))) }
 }
 
 tasks.withType(Jar::class).named("sourcesJar") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }

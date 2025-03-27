@@ -18,24 +18,25 @@
  */
 package org.apache.polaris.spark;
 
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.base.Joiner;
 import org.apache.iceberg.rest.RESTUtil;
 
-import java.util.Map;
-
 public class PolarisResourcePaths {
   private static final Joiner SLASH = Joiner.on("/").skipNulls();
   private static final String PREFIX = "prefix";
 
-  public static final String V1_GENERIC_TABLES = "/v1/{prefix}/namespaces/{namespace}/generic-tables";
-  public static final String V1_GENERIC_TABLE = "/v1/{prefix}/namespaces/{namespace}/generic-tables/{table}";
+  public static final String V1_GENERIC_TABLES =
+      "/v1/{prefix}/namespaces/{namespace}/generic-tables";
+  public static final String V1_GENERIC_TABLE =
+      "/v1/{prefix}/namespaces/{namespace}/generic-tables/{table}";
 
   private final String prefix;
 
   public static PolarisResourcePaths forCatalogProperties(Map<String, String> properties) {
-    return new PolarisResourcePaths((String)properties.get("prefix"));
+    return new PolarisResourcePaths((String) properties.get("prefix"));
   }
 
   public PolarisResourcePaths(String prefix) {
@@ -43,19 +44,38 @@ public class PolarisResourcePaths {
   }
 
   public String genericTables(Namespace ns) {
-    return SLASH.join("v1", this.prefix, new Object[]{"namespaces", RESTUtil.encodeNamespace(ns), "generic-tables"});
+    return SLASH.join(
+        "v1",
+        this.prefix,
+        new Object[] {"namespaces", RESTUtil.encodeNamespace(ns), "generic-tables"});
   }
 
   public String genericTable(TableIdentifier ident) {
-    return SLASH.join("v1", this.prefix, new Object[]{"namespaces", RESTUtil.encodeNamespace(ident.namespace()), "generic-tables", RESTUtil.encodeString(ident.name())});
+    return SLASH.join(
+        "v1",
+        this.prefix,
+        new Object[] {
+          "namespaces",
+          RESTUtil.encodeNamespace(ident.namespace()),
+          "generic-tables",
+          RESTUtil.encodeString(ident.name())
+        });
   }
 
   public String tables(Namespace ns) {
-    return SLASH.join("v1", this.prefix, new Object[]{"namespaces", RESTUtil.encodeNamespace(ns), "tables"});
+    return SLASH.join(
+        "v1", this.prefix, new Object[] {"namespaces", RESTUtil.encodeNamespace(ns), "tables"});
   }
 
   public String table(TableIdentifier ident) {
-    return SLASH.join("v1", this.prefix, new Object[]{"namespaces", RESTUtil.encodeNamespace(ident.namespace()), "tables", RESTUtil.encodeString(ident.name())});
+    return SLASH.join(
+        "v1",
+        this.prefix,
+        new Object[] {
+          "namespaces",
+          RESTUtil.encodeNamespace(ident.namespace()),
+          "tables",
+          RESTUtil.encodeString(ident.name())
+        });
   }
-
 }

@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.spark;
 
+import java.util.Map;
+import java.util.Set;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
-import org.apache.spark.sql.DataFrameReader;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -30,9 +31,6 @@ import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
-import java.util.Set;
 
 public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog.Table {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisSparkTable.class);
@@ -50,11 +48,18 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
   Dataset<Row> df;
 
   public PolarisSparkTable(PolarisGenericTable genericTable) {
-    LOG.warn("Initialize PolarisSparkTable with table {} format {} properties {}", genericTable.getName(), genericTable.getFormat(), genericTable.getProperties());
+    LOG.warn(
+        "Initialize PolarisSparkTable with table {} format {} properties {}",
+        genericTable.getName(),
+        genericTable.getFormat(),
+        genericTable.getProperties());
     this.genericTable = genericTable;
   }
 
-  public String format() { return genericTable.getFormat();}
+  public String format() {
+    return genericTable.getFormat();
+  }
+
   @Override
   public String name() {
     return genericTable.getName();
@@ -65,9 +70,19 @@ public class PolarisSparkTable implements org.apache.spark.sql.connector.catalog
     SparkSession spark = SparkSession.getActiveSession().get();
     if (genericTable.getProperties().containsKey(TableCatalog.PROP_LOCATION)) {
       String location = genericTable.getProperties().get(TableCatalog.PROP_LOCATION);
-      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load(location);
+      this.df =
+          spark
+              .read()
+              .options(genericTable.getProperties())
+              .format(genericTable.getFormat())
+              .load(location);
     } else {
-      this.df = spark.read().options(genericTable.getProperties()).format(genericTable.getFormat()).load();
+      this.df =
+          spark
+              .read()
+              .options(genericTable.getProperties())
+              .format(genericTable.getFormat())
+              .load();
     }
 
     return df.schema();

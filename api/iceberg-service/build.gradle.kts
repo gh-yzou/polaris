@@ -49,7 +49,6 @@ dependencies {
   implementation("org.projectlombok:lombok:1.18.22")
 }
 
-
 openApiGenerate {
   inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
   generatorName = "jaxrs-resteasy"
@@ -109,7 +108,6 @@ openApiGenerate {
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
-
       "CreateGenericTableRequest" to "org.apache.polaris.service.types.CreateGenericTableRequest",
       "GenericTable" to "org.apache.polaris.service.types.GenericTable",
       "LoadGenericTableResponse" to "org.apache.polaris.service.types.LoadGenericTableResponse",

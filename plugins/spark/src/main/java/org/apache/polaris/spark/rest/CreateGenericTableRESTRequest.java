@@ -18,17 +18,17 @@
  */
 package org.apache.polaris.spark.rest;
 
+import java.util.Map;
 import org.apache.iceberg.rest.RESTRequest;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 
-import java.util.Map;
-
-public class CreateGenericTableRESTRequest extends CreateGenericTableRequest implements RESTRequest {
-  public CreateGenericTableRESTRequest(String name, String format, String doc, Map<String, String> properties) {
+public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
+    implements RESTRequest {
+  public CreateGenericTableRESTRequest(
+      String name, String format, String doc, Map<String, String> properties) {
     super(name, format, doc, properties);
   }
 
   @Override
-  public void validate() {
-  }
+  public void validate() {}
 }

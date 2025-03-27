@@ -22,7 +22,7 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.OAuth2Util.AuthSession;
 
 public class RESTClientInfo {
-  private final RESTClient restClient;
+  private RESTClient restClient;
   private final AuthSession catalogAuth;
   private final String prefix;
 
@@ -42,5 +42,9 @@ public class RESTClientInfo {
 
   public String getPrefix() {
     return this.prefix;
+  }
+
+  public void setRestClient(RESTClient restClient) {
+    this.restClient = restClient;
   }
 }

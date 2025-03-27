@@ -21,10 +21,16 @@ package org.apache.polaris.spark;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Consumer;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.SessionCatalog;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.relocated.com.google.common.base.Function;
 import org.apache.iceberg.rest.*;
@@ -39,21 +45,8 @@ import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.ThreadPools;
 import org.apache.polaris.core.PolarisEndpoints;
-import org.apache.polaris.core.catalog.PolarisGenericTable;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
-import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 class PolarisRESTClient implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTClient.class);
@@ -165,8 +158,8 @@ class PolarisRESTClient implements Closeable {
     String oauth2ServerUri =
         props.getOrDefault(OAuth2Properties.OAUTH2_SERVER_URI, ResourcePaths.tokens());
     try (DefaultAuthSession initSession =
-             DefaultAuthSession.of(HTTPHeaders.of(OAuth2Util.authHeaders(initToken)));
-         RESTClient initClient = clientBuilder.apply(props).withAuthSession(initSession)) {
+            DefaultAuthSession.of(HTTPHeaders.of(OAuth2Util.authHeaders(initToken)));
+        RESTClient initClient = clientBuilder.apply(props).withAuthSession(initSession)) {
       Map<String, String> initHeaders = configHeaders(props);
       if (hasCredential) {
         authResponse =
@@ -190,14 +183,17 @@ class PolarisRESTClient implements Closeable {
     if (config.endpoints().isEmpty()) {
       this.endpoints =
           PropertyUtil.propertyAsBoolean(mergedProps, VIEW_ENDPOINTS_SUPPORTED, false)
-              ? org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
-              .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
-              .addAll(DEFAULT_ICEBERG_ENDPOINTS)
-              .addAll(VIEW_ENDPOINTS)
-              .build()
-              : org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet.<Endpoint>builder()
-              .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
-              .addAll(DEFAULT_ICEBERG_ENDPOINTS).build();
+              ? org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet
+                  .<Endpoint>builder()
+                  .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
+                  .addAll(DEFAULT_ICEBERG_ENDPOINTS)
+                  .addAll(VIEW_ENDPOINTS)
+                  .build()
+              : org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet
+                  .<Endpoint>builder()
+                  .addAll(DEFAULT_GENERIC_TABLE_ENDPOINTS)
+                  .addAll(DEFAULT_ICEBERG_ENDPOINTS)
+                  .build();
     } else {
       this.endpoints = ImmutableSet.copyOf(config.endpoints());
     }
@@ -255,7 +251,7 @@ class PolarisRESTClient implements Closeable {
       Map<String, String> queryParams,
       Class<T> responseType,
       Map<String, String> headers,
-      Consumer<ErrorResponse> errorHandler){
+      Consumer<ErrorResponse> errorHandler) {
     return this.restClient.get(path, queryParams, responseType, headers, errorHandler);
   }
 
@@ -333,7 +329,6 @@ class PolarisRESTClient implements Closeable {
       return null;
     }
   }
-
 
   @Override
   public void close() throws IOException {

@@ -18,14 +18,17 @@
  */
 package org.apache.polaris.spark.rest;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.iceberg.rest.RESTResponse;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
 public class LoadGenericTableRESTResponse extends LoadGenericTableResponse implements RESTResponse {
-  public LoadGenericTableRESTResponse() {}
+  // public LoadGenericTableRESTResponse() {}
 
-  public LoadGenericTableRESTResponse(GenericTable table) {
+  @JsonCreator
+  public LoadGenericTableRESTResponse(@JsonProperty(value = "table")GenericTable table) {
       super(table);
   }
 
