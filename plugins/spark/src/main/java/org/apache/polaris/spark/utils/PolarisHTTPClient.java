@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.spark.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -38,6 +36,8 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.auth.CredentialsProvider;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.config.ConnectionConfig;

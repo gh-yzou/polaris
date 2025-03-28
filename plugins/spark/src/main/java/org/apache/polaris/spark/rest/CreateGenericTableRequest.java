@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.spark.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.*;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 @jakarta.annotation.Generated(
     value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",

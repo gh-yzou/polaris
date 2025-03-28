@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.spark;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -64,7 +63,6 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   // private org.apache.spark.sql.catalog.
   // private PolarisRESTCatalogScratch polarisCatalog = null;
   // private PolarisRESTCatalogReflect polarisCatalog = null;
-  ObjectMapper mapper = new ObjectMapper();
   private GenericTableSparkCatalog genericTableSparkCatalog = null;
   private String[] defaultNamespace = null;
   private org.apache.iceberg.catalog.SupportsNamespaces asNamespaceCatalog = null;

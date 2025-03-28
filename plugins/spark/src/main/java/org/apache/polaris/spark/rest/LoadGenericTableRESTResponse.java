@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.spark.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.iceberg.rest.RESTResponse;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 
 public class LoadGenericTableRESTResponse extends LoadGenericTableResponse implements RESTResponse {
   // public LoadGenericTableRESTResponse() {}

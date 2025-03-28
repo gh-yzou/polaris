@@ -33,17 +33,17 @@ dependencies {
   // implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   // implementation(platform(libs.iceberg.bom))
-  implementation("org.apache.iceberg:iceberg-core:1.8.1")
+  // implementation("org.apache.iceberg:iceberg-core:1.8.1")
 
   // implementation(libs.guava)
   // implementation(platform(libs.iceberg.bom))
   // implementation("org.apache.iceberg:iceberg-api:1.8.0")
   // implementation("org.apache.iceberg:iceberg-core:1.8.0")
   // implementation("org.apache.iceberg:iceberg-spark-3.5_2.12:1.8.0")
-  implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1") {
-    exclude("org.apache.iceberg.rest", "*")
-  }
-  // implementation(files("../../libs/iceberg-spark-runtime-3.5_2.12-1.9.0-SNAPSHOT.jar"))
+  // implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1") {
+  //  exclude("org.apache.iceberg.rest", "*")
+  // }
+  implementation(files("../../libs/iceberg-spark-runtime-3.5_2.12-1.9.0-SNAPSHOT.jar"))
   implementation("io.unitycatalog:unitycatalog-spark_2.12:0.2.0")
   implementation("io.delta:delta-spark_2.12:3.3.0")
   // implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12:1.8.0")
