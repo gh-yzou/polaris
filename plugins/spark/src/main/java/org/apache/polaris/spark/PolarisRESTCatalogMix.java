@@ -19,6 +19,7 @@
 package org.apache.polaris.spark;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
@@ -26,7 +27,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
@@ -35,18 +36,18 @@ import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
+import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
-import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.JavaConverters.*;
 
-class PolarisRESTCatalogReflect implements Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
+public class PolarisRESTCatalogMix implements Closeable {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalogMix.class);
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
           OAuth2Properties.ID_TOKEN_TYPE,
@@ -62,8 +63,6 @@ class PolarisRESTCatalogReflect implements Closeable {
   private PolarisResourcePaths paths = null;
 
   // a lazy thread pool for token refresh
-  private volatile ScheduledExecutorService refreshExecutor = null;
-
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
@@ -72,11 +71,63 @@ class PolarisRESTCatalogReflect implements Closeable {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public PolarisRESTCatalogReflect(RESTClientInfo clientInfo) {
-    this.restClient = clientInfo.getRestClient();
-    this.catalogAuth = clientInfo.getCatalogAuth();
-    this.endpoints = DEFAULT_ENDPOINTS;
-    this.paths = new PolarisResourcePaths(clientInfo.getPrefix());
+  public PolarisRESTCatalogMix(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
+    // resolve any configuration that is supplied by environment variables
+    // note that this is only done for local config properties and not for properties from the
+    // catalog service
+    Map<String, String> props = EnvironmentUtil.resolveAll(unresolved);
+
+    this.catalogAuth = catalogAuth;
+    this.restClient =
+        HTTPClient.builder(props)
+            .uri(props.get(CatalogProperties.URI))
+            .build()
+            .withAuthSession(catalogAuth);
+
+    ConfigResponse config;
+    config = fetchConfig(this.restClient, catalogAuth.headers(), props);
+    Map<String, String> mergedProps = config.merge(props);
+    if (config.endpoints().isEmpty()) {
+      this.endpoints = DEFAULT_ENDPOINTS;
+    } else {
+      this.endpoints = ImmutableSet.copyOf(config.endpoints());
+    }
+
+    this.paths = PolarisResourcePaths.forCatalogProperties(mergedProps);
+    this.restClient =
+        HTTPClient.builder(mergedProps)
+            .uri(mergedProps.get(CatalogProperties.URI))
+            .build()
+            .withAuthSession(catalogAuth);
+
+    this.closeables = new CloseableGroup();
+    this.closeables.addCloseable(this.restClient);
+    this.closeables.setSuppressCloseFailure(true);
+  }
+
+  private static ConfigResponse fetchConfig(
+      RESTClient client, Map<String, String> headers, Map<String, String> properties) {
+    // send the client's warehouse location to the service to keep in sync
+    // this is needed for cases where the warehouse is configured client side, but may be used on
+    // the server side,
+    // like the Hive Metastore, where both client and service hive-site.xml may have a warehouse
+    // location.
+    ImmutableMap.Builder<String, String> queryParams = ImmutableMap.builder();
+    if (properties.containsKey(CatalogProperties.WAREHOUSE_LOCATION)) {
+      queryParams.put(
+          CatalogProperties.WAREHOUSE_LOCATION,
+          properties.get(CatalogProperties.WAREHOUSE_LOCATION));
+    }
+
+    ConfigResponse configResponse =
+        client.get(
+            ResourcePaths.config(),
+            queryParams.build(),
+            ConfigResponse.class,
+            headers,
+            ErrorHandlers.defaultErrorHandler());
+    configResponse.validate();
+    return configResponse;
   }
 
   private void checkNamespaceIsValid(Namespace namespace) {
@@ -111,12 +162,14 @@ class PolarisRESTCatalogReflect implements Closeable {
     do {
       queryParams.put("pageToken", pageToken);
       ListTablesResponse response =
-          restClient.get(
-              paths.tables(ns),
-              queryParams,
-              ListTablesResponse.class,
-              Maps.newHashMap(),
-              ErrorHandlers.namespaceErrorHandler());
+          restClient
+              .withAuthSession(this.catalogAuth)
+              .get(
+                  paths.tables(ns),
+                  queryParams,
+                  ListTablesResponse.class,
+                  Maps.newHashMap(),
+                  ErrorHandlers.namespaceErrorHandler());
       pageToken = response.nextPageToken();
       tables.addAll(response.identifiers());
     } while (pageToken != null);
@@ -185,6 +238,7 @@ class PolarisRESTCatalogReflect implements Closeable {
                 LoadGenericTableRESTResponse.class,
                 Maps.newHashMap(),
                 ErrorHandlers.tableErrorHandler());
+
     PolarisGenericTable genericTable =
         new PolarisGenericTable(
             response.getTable().getName(),

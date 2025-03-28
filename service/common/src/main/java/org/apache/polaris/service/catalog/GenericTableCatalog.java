@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.service.catalog;
 
+import java.util.Map;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 
-import java.util.Map;
-
 public interface GenericTableCatalog {
-  PolarisGenericTable createGenericTable(TableIdentifier ident, String format, Map<String, String> props);
+  PolarisGenericTable createGenericTable(
+      TableIdentifier ident, String format, Map<String, String> props);
 
   PolarisGenericTable loadGenericTable(TableIdentifier ident);
 }

@@ -35,12 +35,11 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
-import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.Spark3Util;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.polaris.spark.utils.CatalogClientUtils;
-import org.apache.polaris.spark.utils.PolarisHTTPClient;
 import org.apache.polaris.spark.utils.RESTClientInfo;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
@@ -128,19 +127,29 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return catalog;
   }
 
-  protected PolarisRESTCatalogReflect buildPolarisCatalogReflect(Catalog icebergCatalog, CaseInsensitiveStringMap options) {
+  protected PolarisRESTCatalogReflect buildPolarisCatalogReflect(
+      Catalog icebergCatalog, CaseInsensitiveStringMap options) {
     /* Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     optionsMap.putAll(options.asCaseSensitiveMap());
     optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
     optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser()); */
 
     // start hanging, need to investigate
-    // PolarisHTTPClient httpClient = PolarisHTTPClient.builder(options).uri(options.get(CatalogProperties.URI)).build();
+    // PolarisHTTPClient httpClient =
+    // PolarisHTTPClient.builder(options).uri(options.get(CatalogProperties.URI)).build();
     RESTClientInfo clientInfo =
         CatalogClientUtils.extractIcebergRESTClientInfo((RESTCatalog) icebergCatalog);
     // httpClient.withAuthSession(clientInfo.getCatalogAuth());
     // clientInfo.setRestClient(httpClient);
     PolarisRESTCatalogReflect catalog = new PolarisRESTCatalogReflect(clientInfo);
+    return catalog;
+  }
+
+  protected PolarisRESTCatalogMix buildPolarisCatalogMix(
+      Catalog icebergCatalog, CaseInsensitiveStringMap options) {
+    OAuth2Util.AuthSession authCatalog =
+        CatalogClientUtils.getAuthSession((RESTCatalog) icebergCatalog);
+    PolarisRESTCatalogMix catalog = new PolarisRESTCatalogMix(options, authCatalog);
     return catalog;
   }
 
@@ -159,7 +168,7 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     // this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog);
     this.genericTableSparkCatalog =
         // new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog, options));
-        new GenericTableSparkCatalog(buildPolarisCatalogScratch(name, options));
+        new GenericTableSparkCatalog(buildPolarisCatalogMix(this.icebergCatalog, options));
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;

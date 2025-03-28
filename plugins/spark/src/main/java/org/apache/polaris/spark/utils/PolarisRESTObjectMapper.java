@@ -18,14 +18,17 @@
  */
 package org.apache.polaris.spark.utils;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.cfg.ConstructorDetector;
+import org.apache.iceberg.*;
 import org.apache.iceberg.rest.RESTSerializers;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.annotation.PropertyAccessor;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonFactory;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.DeserializationFeature;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.cfg.ConstructorDetector;
+import org.apache.iceberg.rest.requests.*;
+import org.apache.iceberg.rest.responses.*;
 
 public class PolarisRESTObjectMapper {
   private static final JsonFactory FACTORY = new JsonFactory();
@@ -51,7 +54,8 @@ public class PolarisRESTObjectMapper {
   }
 
   static {
-    MAPPER = new ObjectMapper(FACTORY).setConstructorDetector(ConstructorDetector.USE_PROPERTIES_BASED);
+    MAPPER =
+        new ObjectMapper(FACTORY).setConstructorDetector(ConstructorDetector.USE_PROPERTIES_BASED);
     isInitialized = false;
   }
 }

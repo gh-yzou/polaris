@@ -1,0 +1,180 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.spark.rest;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.annotations.*;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+@ApiModel(
+    description =
+        "Generic Table information. - `name` name for the generic table - `format` format for the generic table, i.e. \"delta\", \"csv\" - `properties` properties for the generic table passed on creation - `doc` comment or description for the generic table ")
+@jakarta.annotation.Generated(
+    value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",
+    date = "2025-03-26T10:48:38.764604-07:00[America/Los_Angeles]",
+    comments = "Generator version: 7.12.0")
+public class GenericTable {
+
+  private String name;
+  private String format;
+  private String doc;
+  private Map<String, String> properties;
+
+  /** */
+  @ApiModelProperty(required = true, value = "")
+  @JsonProperty(value = "name", required = true)
+  public String getName() {
+    return name;
+  }
+
+  /** */
+  @ApiModelProperty(required = true, value = "")
+  @JsonProperty(value = "format", required = true)
+  public String getFormat() {
+    return format;
+  }
+
+  /** */
+  @ApiModelProperty(value = "")
+  @JsonProperty(value = "doc")
+  public String getDoc() {
+    return doc;
+  }
+
+  /** */
+  @ApiModelProperty(value = "")
+  @JsonProperty(value = "properties")
+  public Map<String, String> getProperties() {
+    return properties;
+  }
+
+  @JsonCreator
+  public GenericTable(
+      @JsonProperty(value = "name", required = true) String name,
+      @JsonProperty(value = "format", required = true) String format,
+      @JsonProperty(value = "doc") String doc,
+      @JsonProperty(value = "properties") Map<String, String> properties) {
+    this.name = name;
+    this.format = format;
+    this.doc = doc;
+    this.properties = Objects.requireNonNullElse(properties, new HashMap<>());
+  }
+
+  public GenericTable(String name, String format) {
+    this.name = name;
+    this.format = format;
+    this.doc = null;
+    this.properties = new HashMap<>();
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static Builder builder(String name, String format) {
+    return new Builder(name, format);
+  }
+
+  public static final class Builder {
+    private String name;
+    private String format;
+    private String doc;
+    private Map<String, String> properties;
+
+    private Builder() {}
+
+    private Builder(String name, String format) {
+      this.name = name;
+      this.format = format;
+    }
+
+    public Builder setName(String name) {
+      this.name = name;
+      return this;
+    }
+
+    public Builder setFormat(String format) {
+      this.format = format;
+      return this;
+    }
+
+    public Builder setDoc(String doc) {
+      this.doc = doc;
+      return this;
+    }
+
+    public Builder setProperties(Map<String, String> properties) {
+      this.properties = properties;
+      return this;
+    }
+
+    public GenericTable build() {
+      GenericTable inst = new GenericTable(name, format, doc, properties);
+      return inst;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    GenericTable genericTable = (GenericTable) o;
+    return Objects.equals(this.name, genericTable.name)
+        && Objects.equals(this.format, genericTable.format)
+        && Objects.equals(this.doc, genericTable.doc)
+        && Objects.equals(this.properties, genericTable.properties);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, format, doc, properties);
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("class GenericTable {\n");
+
+    sb.append("    name: ").append(toIndentedString(name)).append("\n");
+    sb.append("    format: ").append(toIndentedString(format)).append("\n");
+    sb.append("    doc: ").append(toIndentedString(doc)).append("\n");
+    sb.append("    properties: ").append(toIndentedString(properties)).append("\n");
+    sb.append("}");
+    return sb.toString();
+  }
+
+  /**
+   * Convert the given object to string with each line indented by 4 spaces (except the first line).
+   */
+  private String toIndentedString(Object o) {
+    if (o == null) {
+      return "null";
+    }
+    return o.toString().replace("\n", "\n    ");
+  }
+}

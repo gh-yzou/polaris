@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.catalog;
 
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 public class PolarisGenericTable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTable.class);
@@ -32,18 +30,27 @@ public class PolarisGenericTable {
   private final Map<String, String> properties;
   private final long registerTimeStamp;
 
-  public PolarisGenericTable(String name, String format, Map<String, String> props, long registerTimeStamp) {
+  public PolarisGenericTable(
+      String name, String format, Map<String, String> props, long registerTimeStamp) {
     this.name = name;
     this.format = format;
     this.properties = props;
     this.registerTimeStamp = registerTimeStamp;
   }
 
-  public String getName() { return name; }
+  public String getName() {
+    return name;
+  }
 
-  public String getFormat() { return format; }
+  public String getFormat() {
+    return format;
+  }
 
-  public Map<String, String> getProperties() { return properties; }
+  public Map<String, String> getProperties() {
+    return properties;
+  }
 
-  public long getRegisterTimeStamp() { return registerTimeStamp; }
+  public long getRegisterTimeStamp() {
+    return registerTimeStamp;
+  }
 }

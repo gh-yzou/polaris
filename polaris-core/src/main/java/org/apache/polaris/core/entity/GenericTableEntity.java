@@ -20,11 +20,10 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
-
-import java.util.Map;
 
 public class GenericTableEntity extends TableLikeEntity {
   public static final String GENERIC_TABLE_FORMAT_SOURCE_KEY = "format";
@@ -60,7 +59,8 @@ public class GenericTableEntity extends TableLikeEntity {
     }
   }
 
-  public static class Builder extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
+  public static class Builder
+      extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
     public Builder(TableIdentifier identifier, String format, Map<String, String> tableProperties) {
       super();
       setTableIdentifier(identifier);
@@ -75,7 +75,7 @@ public class GenericTableEntity extends TableLikeEntity {
     }
 
     @Override
-    public GenericTableEntity build()  {
+    public GenericTableEntity build() {
       return new GenericTableEntity(buildBase());
     }
 

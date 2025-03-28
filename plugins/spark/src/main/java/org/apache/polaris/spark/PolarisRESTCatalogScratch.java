@@ -48,7 +48,6 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.shaded.com.github.benmanes.caffeine.cache.Cache;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.iceberg.util.PropertyUtil;
@@ -57,7 +56,6 @@ import org.apache.polaris.core.PolarisEndpoints;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.spark.rest.CreateGenericTableRESTRequest;
 import org.apache.polaris.spark.rest.LoadGenericTableRESTResponse;
-import org.apache.polaris.spark.utils.PolarisHTTPClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +93,7 @@ public class PolarisRESTCatalogScratch implements Configurable<Object>, Closeabl
   public PolarisRESTCatalogScratch() {
     this(
         SessionCatalog.SessionContext.createEmpty(),
-        config -> PolarisHTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
+        config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
   }
 
   public PolarisRESTCatalogScratch(Function<Map<String, String>, RESTClient> clientBuilder) {
@@ -190,12 +188,11 @@ public class PolarisRESTCatalogScratch implements Configurable<Object>, Closeabl
                 .oauth2ServerUri(oauth2ServerUri)
                 .optionalOAuthParams(optionalOAuthParams)
                 .build());
-    this.restClient = PolarisHTTPClient
-        .builder(mergedProps)
-        .uri(mergedProps.get(CatalogProperties.URI))
-        .withObjectMapper(new ObjectMapper())
-        .build()
-        .withAuthSession(catalogAuth);
+    this.restClient =
+        HTTPClient.builder(mergedProps)
+            .uri(mergedProps.get(CatalogProperties.URI))
+            .build()
+            .withAuthSession(catalogAuth);
     // this.restClient = clientBuilder.apply(mergedProps).withAuthSession(catalogAuth);
     if (authResponse != null) {
       this.catalogAuth =

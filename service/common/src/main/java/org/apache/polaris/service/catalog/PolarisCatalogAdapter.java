@@ -23,6 +23,9 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.util.Set;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -38,28 +41,19 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
-import org.apache.polaris.service.catalog.api.IcebergRestPolarisCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestPolarisCatalogApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
-import java.util.Set;
-
-/**
- * Implementation of the {@link IcebergRestPolarisCatalogApiService}.
- */
+/** Implementation of the {@link IcebergRestPolarisCatalogApiService}. */
 @RequestScoped
 public class PolarisCatalogAdapter implements IcebergRestPolarisCatalogApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogAdapter.class);
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE)
-          .build();
+      ImmutableSet.<Endpoint>builder().add(PolarisEndpoints.V1_CREATE_GENERIC_TABLE).build();
 
   private final RealmContext realmContext;
   private final CallContext callContext;
@@ -129,7 +123,10 @@ public class PolarisCatalogAdapter implements IcebergRestPolarisCatalogApiServic
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    LOGGER.info("createGenericTable with name {} and properties {}", createGenericTableRequest.getName(), createGenericTableRequest.getProperties());
+    LOGGER.info(
+        "createGenericTable with name {} and properties {}",
+        createGenericTableRequest.getName(),
+        createGenericTableRequest.getProperties());
 
     return Response.ok(
             newHandlerWrapper(realmContext, securityContext, prefix)
@@ -148,7 +145,8 @@ public class PolarisCatalogAdapter implements IcebergRestPolarisCatalogApiServic
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix).loadGenericTable(tableIdentifier))
+            newHandlerWrapper(realmContext, securityContext, prefix)
+                .loadGenericTable(tableIdentifier))
         .build();
   }
 }

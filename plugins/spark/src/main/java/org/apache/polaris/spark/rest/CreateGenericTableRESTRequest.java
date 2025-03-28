@@ -20,7 +20,6 @@ package org.apache.polaris.spark.rest;
 
 import java.util.Map;
 import org.apache.iceberg.rest.RESTRequest;
-import org.apache.polaris.service.types.CreateGenericTableRequest;
 
 public class CreateGenericTableRESTRequest extends CreateGenericTableRequest
     implements RESTRequest {

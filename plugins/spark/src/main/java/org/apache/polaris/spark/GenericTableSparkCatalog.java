@@ -44,10 +44,11 @@ public class GenericTableSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(GenericTableSparkCatalog.class);
 
   // private PolarisRESTCatalogReflect polarisCatalog = null;
-  private PolarisRESTCatalogScratch polarisCatalog = null;
+  // private PolarisRESTCatalogScratch polarisCatalog = null;
+  private PolarisRESTCatalogMix polarisCatalog = null;
   private String catalogName = null;
 
-  public GenericTableSparkCatalog(PolarisRESTCatalogScratch polarisCatalog) {
+  public GenericTableSparkCatalog(PolarisRESTCatalogMix polarisCatalog) {
     this.polarisCatalog = polarisCatalog;
   }
 

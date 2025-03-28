@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.service.catalog;
 
-import com.google.common.base.Objects;
-import jakarta.ws.rs.core.SecurityContext;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.*;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.*;
@@ -36,10 +37,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.*;
 
 public class PolarisGenericTableCatalog implements GenericTableCatalog, Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalog.class);
@@ -76,11 +73,13 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog, Closeabl
   }
 
   @Override
-  public PolarisGenericTable createGenericTable(TableIdentifier ident, String format, Map<String, String> props) {
+  public PolarisGenericTable createGenericTable(
+      TableIdentifier ident, String format, Map<String, String> props) {
     LOGGER.debug("doCommit for table {} with format {}, properties {}", ident, format, props);
     // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
     if (!namespaceCatalog.namespaceExists(ident.namespace())) {
-      throw new NoSuchNamespaceException("Cannot create table %s. Namespace does not exist: %s", ident, ident.namespace());
+      throw new NoSuchNamespaceException(
+          "Cannot create table %s. Namespace does not exist: %s", ident, ident.namespace());
     }
 
     PolarisResolvedPathWrapper resolvedView =
@@ -97,14 +96,14 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog, Closeabl
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(ident, PolarisEntitySubType.GENETIC_TABLE);
     GenericTableEntity entity =
-        GenericTableEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
+        GenericTableEntity.of(
+            resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
     if (null == entity) {
       entity =
           new GenericTableEntity.Builder(ident, format, props)
               .setCatalogId(getCatalogId())
               .setSubType(PolarisEntitySubType.GENETIC_TABLE)
-              .setId(
-                  getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+              .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
               .build();
     }
     createTableLike(ident, entity);
@@ -121,7 +120,8 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog, Closeabl
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(ident, PolarisEntitySubType.GENETIC_TABLE);
     GenericTableEntity entity =
-        GenericTableEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
+        GenericTableEntity.of(
+            resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
     if (entity == null) {
       throw new NoSuchTableException("Generic Table %s does not exist", ident);
     }

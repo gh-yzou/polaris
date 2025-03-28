@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.spark.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -36,8 +38,6 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.iceberg.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.auth.CredentialsProvider;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.iceberg.shaded.org.apache.hc.client5.http.config.ConnectionConfig;
@@ -57,7 +57,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PolarisHTTPClient extends BaseHTTPClient {
-  private static final Logger LOG = LoggerFactory.getLogger(HTTPClient.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisHTTPClient.class);
   private static final String SIGV4_ENABLED = "rest.sigv4-enabled";
   private static final String SIGV4_REQUEST_INTERCEPTOR_IMPL =
       "org.apache.iceberg.aws.RESTSigV4Signer";
@@ -259,6 +259,11 @@ public class PolarisHTTPClient extends BaseHTTPClient {
         } else {
           try {
             LOG.warn("The responseBody to parse {}", responseBody);
+            if (responseType.getSimpleName().endsWith("TableRESTResponse")) {
+              LOG.warn("RAW Response parsing");
+              ObjectMapper tempMapper = new ObjectMapper();
+              return (T) (tempMapper.readValue(responseBody, responseType));
+            }
             return (T) (this.mapper.readValue(responseBody, responseType));
           } catch (JsonProcessingException e) {
             throw new RESTException(
@@ -421,6 +426,7 @@ public class PolarisHTTPClient extends BaseHTTPClient {
     }
 
     public PolarisHTTPClient.Builder withObjectMapper(ObjectMapper objectMapper) {
+      LOG.warn("update object mapper to custom object mapper");
       this.mapper = objectMapper;
       return this;
     }

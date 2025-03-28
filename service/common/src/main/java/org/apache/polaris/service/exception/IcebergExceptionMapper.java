@@ -89,7 +89,10 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   @Override
   public Response toResponse(RuntimeException runtimeException) {
-    LOGGER.info("Handling runtimeException {}, {}", runtimeException.getMessage(), runtimeException.getStackTrace());
+    LOGGER.info(
+        "Handling runtimeException {}, {}",
+        runtimeException.getMessage(),
+        runtimeException.getStackTrace());
 
     int responseCode = mapExceptionToResponseCode(runtimeException);
     LOGGER

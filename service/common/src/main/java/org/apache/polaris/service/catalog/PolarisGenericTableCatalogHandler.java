@@ -18,26 +18,17 @@
  */
 package org.apache.polaris.service.catalog;
 
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.*;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.catalog.PolarisGenericTable;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
@@ -45,11 +36,9 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.ws.rs.core.SecurityContext;
-import java.util.Arrays;
-
 public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalogHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PolarisGenericTableCatalogHandler.class);
 
   /* private final CallContext callContext;
   private final PolarisEntityManager entityManager;
@@ -73,7 +62,14 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
-    super(callContext, entityManager, metaStoreManager, securityContext, catalogFactory, catalogName, authorizer);
+    super(
+        callContext,
+        entityManager,
+        metaStoreManager,
+        securityContext,
+        catalogFactory,
+        catalogName,
+        authorizer);
     /* this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -92,7 +88,8 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
     this.catalogFactory = catalogFactory; */
   }
 
-  public LoadGenericTableResponse createGenericTable(Namespace namespace, CreateGenericTableRequest request) {
+  public LoadGenericTableResponse createGenericTable(
+      Namespace namespace, CreateGenericTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_GENERIC_TABLE_DIRECT;
     TableIdentifier identifier = TableIdentifier.of(namespace, request.getName());
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
@@ -107,15 +104,19 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
 
-    PolarisGenericTable table = genericTableCatalog.createGenericTable(identifier, request.getFormat(), request.getProperties());
+    PolarisGenericTable table =
+        genericTableCatalog.createGenericTable(
+            identifier, request.getFormat(), request.getProperties());
 
-    GenericTable genericTable = GenericTable.builder()
-        .setName(table.getName())
-        .setFormat(table.getFormat())
-        .setProperties(table.getProperties())
-        // .setCatalogRegisterAt(table.getRegisterTimeStamp())
-        .build();
-    LoadGenericTableResponse response = LoadGenericTableResponse.builder().setTable(genericTable).build();
+    GenericTable genericTable =
+        GenericTable.builder()
+            .setName(table.getName())
+            .setFormat(table.getFormat())
+            .setProperties(table.getProperties())
+            // .setCatalogRegisterAt(table.getRegisterTimeStamp())
+            .build();
+    LoadGenericTableResponse response =
+        LoadGenericTableResponse.builder().setTable(genericTable).build();
     return response;
   }
 
@@ -125,12 +126,13 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
 
     PolarisGenericTable table = genericTableCatalog.loadGenericTable(identifier);
 
-    GenericTable genericTable = GenericTable.builder()
-        .setName(table.getName())
-        .setFormat(table.getFormat())
-        .setProperties(table.getProperties())
-        // .setCatalogRegisterAt(table.getRegisterTimeStamp())
-        .build();
+    GenericTable genericTable =
+        GenericTable.builder()
+            .setName(table.getName())
+            .setFormat(table.getFormat())
+            .setProperties(table.getProperties())
+            // .setCatalogRegisterAt(table.getRegisterTimeStamp())
+            .build();
     return LoadGenericTableResponse.builder().setTable(genericTable).build();
   }
 
@@ -143,13 +145,9 @@ public class PolarisGenericTableCatalogHandler extends PolarisBaseHandler implem
     SupportsNamespaces namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
 
-    this.genericTableCatalog = new PolarisGenericTableCatalog(
-        entityManager,
-        metaStoreManager,
-        callContext,
-        resolutionManifest,
-        namespaceCatalog
-    );
+    this.genericTableCatalog =
+        new PolarisGenericTableCatalog(
+            entityManager, metaStoreManager, callContext, resolutionManifest, namespaceCatalog);
   }
 
   @Override

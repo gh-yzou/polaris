@@ -32,13 +32,17 @@ dependencies {
   // implementation(project(":polaris-api-management-model"))
   // implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  // implementation(platform(libs.iceberg.bom))
+  implementation("org.apache.iceberg:iceberg-core:1.8.1")
 
   // implementation(libs.guava)
   // implementation(platform(libs.iceberg.bom))
   // implementation("org.apache.iceberg:iceberg-api:1.8.0")
   // implementation("org.apache.iceberg:iceberg-core:1.8.0")
   // implementation("org.apache.iceberg:iceberg-spark-3.5_2.12:1.8.0")
-  implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.0")
+  implementation("org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.8.1") {
+    exclude("org.apache.iceberg.rest", "*")
+  }
   // implementation(files("../../libs/iceberg-spark-runtime-3.5_2.12-1.9.0-SNAPSHOT.jar"))
   implementation("io.unitycatalog:unitycatalog-spark_2.12:0.2.0")
   implementation("io.delta:delta-spark_2.12:3.3.0")
@@ -51,10 +55,19 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
     exclude("org.slf4j", "jul-to-slf4j")
   }
+
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  implementation(libs.swagger.annotations)
+  implementation(libs.jakarta.annotation.api)
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.jakarta.validation.api)
   // spark dependencies
+
+  testImplementation(platform(libs.junit.bom))
+  testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
 sourceSets { main { java.srcDirs("src/main/java") } }

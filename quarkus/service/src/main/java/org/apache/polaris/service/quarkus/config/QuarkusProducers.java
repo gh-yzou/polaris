@@ -50,7 +50,6 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
-import org.apache.polaris.service.catalog.api.IcebergRestPolarisCatalogApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;

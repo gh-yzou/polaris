@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Arrays;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
@@ -40,8 +41,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
 
 public class PolarisBaseHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisBaseHandler.class);
