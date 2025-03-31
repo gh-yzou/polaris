@@ -83,33 +83,6 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return CatalogUtil.buildIcebergCatalog(name, optionsMap, conf);
   }
 
-  protected PolarisRESTCatalog buildPolarisCatalog(
-      Catalog icebergCatalog, String name, CaseInsensitiveStringMap options) {
-    Configuration conf = SparkUtil.hadoopConfCatalogOverrides(SparkSession.active(), name);
-    Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    optionsMap.putAll(options.asCaseSensitiveMap());
-    optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
-    optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
-
-    /* PolarisRESTCatalog catalog = new PolarisRESTCatalog();
-    catalog.setConf(conf);
-    // start hanging, need to investigate
-    RESTClient icebergRestClient = CatalogClientUtils.getRestClient((RESTCatalog) icebergCatalog);
-    OAuth2Util.AuthSession catalogAuth = CatalogClientUtils.getAuthSession((RESTCatalog) icebergCatalog);
-    catalog.initialize(icebergRestClient, catalogAuth, optionsMap); */
-
-    try {
-      PolarisRESTClient restClient = new PolarisRESTClient();
-      restClient.initialize(name, optionsMap);
-
-      PolarisRESTCatalog catalog = new PolarisRESTCatalog();
-      catalog.initialize(restClient, optionsMap);
-      return catalog;
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize PolarisRESTClient", e);
-    }
-  }
-
   protected PolarisRESTCatalogScratch buildPolarisCatalogScratch(
       String name, CaseInsensitiveStringMap options) {
     Configuration conf = SparkUtil.hadoopConfCatalogOverrides(SparkSession.active(), name);
@@ -224,11 +197,11 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public Table loadTable(Identifier ident) throws NoSuchTableException {
     // should check iceberg first
     try {
-      if (this.sparkTableCatalog != null) {
-        return this.sparkTableCatalog.loadTable(ident);
-      } else {
-        return genericTableSparkCatalog.loadTable(ident);
-      }
+      // if (this.sparkTableCatalog != null) {
+      //  return this.sparkTableCatalog.loadTable(ident);
+      // } else {
+      return genericTableSparkCatalog.loadTable(ident);
+      // }
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(ident);
     }
@@ -246,11 +219,11 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
         properties);
     String provider = properties.get("provider");
     try {
-      if (this.sparkTableCatalog != null) {
-        return this.sparkTableCatalog.createTable(ident, schema, transforms, properties);
-      } else {
-        return this.genericTableSparkCatalog.createTable(ident, schema, transforms, properties);
-      }
+      // if (this.sparkTableCatalog != null) {
+      //  return this.sparkTableCatalog.createTable(ident, schema, transforms, properties);
+      // } else {
+      return this.genericTableSparkCatalog.createTable(ident, schema, transforms, properties);
+      // }
       // polarisCatalog.createTable(buildIdentifier(ident), provider, properties);
       // SparkSession spark = SparkSession.getActiveSession().get();
       // List<Row> emptyRows = new ArrayList<>();

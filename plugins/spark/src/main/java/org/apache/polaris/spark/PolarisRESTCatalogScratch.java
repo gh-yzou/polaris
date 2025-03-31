@@ -60,7 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PolarisRESTCatalogScratch implements Configurable<Object>, Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalogReflect.class);
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
           OAuth2Properties.ID_TOKEN_TYPE,

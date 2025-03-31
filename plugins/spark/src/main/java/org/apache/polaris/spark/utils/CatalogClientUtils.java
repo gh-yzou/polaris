@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.*;
 import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.spark.sql.connector.catalog.V1Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

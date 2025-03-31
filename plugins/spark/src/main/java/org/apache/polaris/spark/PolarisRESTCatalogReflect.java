@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConverters.*;
 
 class PolarisRESTCatalogReflect implements Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalog.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisRESTCatalogReflect.class);
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
           OAuth2Properties.ID_TOKEN_TYPE,

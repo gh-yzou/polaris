@@ -18,10 +18,9 @@
  */
 package org.apache.polaris.spark.rest;
 
+import java.util.Map;
 import org.apache.iceberg.rest.auth.AuthManager;
 import org.apache.iceberg.rest.auth.AuthManagers;
-
-import java.util.Map;
 
 public class PolarisAuthManagers {
   private static AuthManager authManager = null;

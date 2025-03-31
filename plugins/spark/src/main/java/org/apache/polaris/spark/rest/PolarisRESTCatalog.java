@@ -18,28 +18,19 @@
  */
 package org.apache.polaris.spark.rest;
 
-import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.catalog.SessionCatalog;
-import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.auth.AuthManager;
-
-import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class PolarisRESTCatalog extends RESTCatalog {
-    public PolarisRESTCatalog() {
-      this(
-          SessionCatalog.SessionContext.createEmpty(),
-          config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
-    }
+  /* public PolarisRESTCatalog() {
+    this(
+        SessionCatalog.SessionContext.createEmpty(),
+        config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
+  }
 
-    public PolarisRESTCatalog(
-        SessionCatalog.SessionContext context,
-        Function<Map<String, String>, RESTClient> clientBuilder,
-        BiFunction<String, Map<String, String>, AuthManager> authManagerBuilder) {
-      super(context, clientBuilder, authManagerBuilder);
-    }
+  public PolarisRESTCatalog(
+      SessionCatalog.SessionContext context,
+      Function<Map<String, String>, RESTClient> clientBuilder,
+      BiFunction<String, Map<String, String>, AuthManager> authManagerBuilder) {
+    super(context, clientBuilder, authManagerBuilder);
+  } */
 }
