@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.spark;
 
-import java.util.*;
-
 import com.google.common.collect.Maps;
+
+import java.net.URI;
+import java.util.*;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -28,6 +29,9 @@ import org.apache.iceberg.spark.Spark3Util;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException;
 import org.apache.spark.sql.catalyst.analysis.TableAlreadyExistsException;
+import org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.catalyst.catalog.CatalogTableType;
 import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.execution.datasources.DataSource;
@@ -38,6 +42,7 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.*;
+import scala.collection.JavaConverters;
 
 public class GenericTableSparkCatalog implements TableCatalog {
   private static final Logger LOG = LoggerFactory.getLogger(GenericTableSparkCatalog.class);
@@ -70,7 +75,7 @@ public class GenericTableSparkCatalog implements TableCatalog {
 
       Map<String, String> properties = genericTable.properties();
       String format = genericTable.format();
-      /* if (format.equals("delta")) {
+      if (format.equals("delta")) {
         String location = properties.get(TableCatalog.PROP_LOCATION);
         CatalogStorageFormat storageFormat =
             new CatalogStorageFormat(
@@ -113,20 +118,18 @@ public class GenericTableSparkCatalog implements TableCatalog {
                     .toMap(Predef.<Tuple2<String, String>>conforms()),
                 Option.apply(null));
         return new V1Table(catalogTable);
-      } else { */
-      SQLConf sqlConf = SQLConf.get();
-      LOG.warn("Provider class found {}", DataSource.lookupDataSourceV2(format, sqlConf));
-      TableProvider provider = DataSource.lookupDataSourceV2(format, sqlConf).get();
-      String location = properties.get("location");
-      Map<String, String> tableProperties = Maps.newHashMap();
-      tableProperties.putAll(properties);
-      tableProperties.put("path", location);
-      CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);
-      return DataSourceV2Utils.getTableFromProvider(
-          provider,
-          property_map,
-          scala.Option$.MODULE$.<StructType>empty());
-      // }
+      } else {
+        SQLConf sqlConf = SQLConf.get();
+        LOG.warn("Provider class found {}", DataSource.lookupDataSourceV2(format, sqlConf));
+        TableProvider provider = DataSource.lookupDataSourceV2(format, sqlConf).get();
+        String location = properties.get("location");
+        Map<String, String> tableProperties = Maps.newHashMap();
+        tableProperties.putAll(properties);
+        tableProperties.put("path", location);
+        CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);
+        return DataSourceV2Utils.getTableFromProvider(
+            provider, property_map, scala.Option$.MODULE$.<StructType>empty());
+      }
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(ident);
     } catch (Exception e) {
@@ -140,25 +143,34 @@ public class GenericTableSparkCatalog implements TableCatalog {
       throws TableAlreadyExistsException, NoSuchNamespaceException {
     String format = properties.get("provider");
     try {
-      Table createResult = polarisCatalog.createTable(buildIdentifier(ident), format, properties);
-      // if (format.equals("delta")) {
-      //  return createResult;
-      // } else {
-      SQLConf sqlConf = SQLConf.get();
-      LOG.warn("Provider class found {}", DataSource.lookupDataSourceV2(format, sqlConf));
-      TableProvider provider = DataSource.lookupDataSourceV2(format, sqlConf).get();
-      String location = properties.get("location");
+      LOG.warn("Initialize table for {}", ident);
+      boolean hasLocationClause = properties.containsKey(TableCatalog.PROP_LOCATION) && properties.get(TableCatalog.PROP_LOCATION) != null;
+      // boolean isPathTable = ident.namespace().length == 1 && new Path(ident.name()).isAbsolute;
       Map<String, String> tableProperties = Maps.newHashMap();
       tableProperties.putAll(properties);
-      tableProperties.put("path", location);
-      CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);
-      return DataSourceV2Utils.getTableFromProvider(
-          provider,
-          property_map,
-          scala.Option$.MODULE$.<StructType>empty());
-      // }
+      if (!hasLocationClause) {
+        tableProperties.put(TableCatalog.PROP_LOCATION, properties.get("__FAKE_PATH__"));
+      }
+      Table createResult = polarisCatalog.createTable(buildIdentifier(ident), format, tableProperties);
+      return loadTable(ident);
+      /* if (format.equals("delta")) {
+        return createResult;
+      } else {
+        SQLConf sqlConf = SQLConf.get();
+        LOG.warn("Provider class found {}", DataSource.lookupDataSourceV2(format, sqlConf));
+        TableProvider provider = DataSource.lookupDataSourceV2(format, sqlConf).get();
+        String location = properties.get("location");
+        // Map<String, String> tableProperties = Maps.newHashMap();
+        // tableProperties.putAll(properties);
+        tableProperties.put("path", location);
+        CaseInsensitiveStringMap property_map = new CaseInsensitiveStringMap(tableProperties);
+        return DataSourceV2Utils.getTableFromProvider(
+            provider, property_map, scala.Option$.MODULE$.<StructType>empty());
+      } */
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(ident);
+    } catch (NoSuchTableException e) {
+      throw new RuntimeException(e);
     }
   }
 

@@ -197,11 +197,11 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public Table loadTable(Identifier ident) throws NoSuchTableException {
     // should check iceberg first
     try {
-      // if (this.sparkTableCatalog != null) {
-      //  return this.sparkTableCatalog.loadTable(ident);
-      // } else {
-      return genericTableSparkCatalog.loadTable(ident);
-      // }
+      if (this.sparkTableCatalog != null) {
+        return this.sparkTableCatalog.loadTable(ident);
+      } else {
+        return genericTableSparkCatalog.loadTable(ident);
+      }
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(ident);
     }
@@ -219,11 +219,11 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
         properties);
     String provider = properties.get("provider");
     try {
-      // if (this.sparkTableCatalog != null) {
-      //  return this.sparkTableCatalog.createTable(ident, schema, transforms, properties);
-      // } else {
-      return this.genericTableSparkCatalog.createTable(ident, schema, transforms, properties);
-      // }
+      if (this.sparkTableCatalog != null) {
+        return this.sparkTableCatalog.createTable(ident, schema, transforms, properties);
+      } else {
+        return this.genericTableSparkCatalog.createTable(ident, schema, transforms, properties);
+      }
       // polarisCatalog.createTable(buildIdentifier(ident), provider, properties);
       // SparkSession spark = SparkSession.getActiveSession().get();
       // List<Row> emptyRows = new ArrayList<>();
