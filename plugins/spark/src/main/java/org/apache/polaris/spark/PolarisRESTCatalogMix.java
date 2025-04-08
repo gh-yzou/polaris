@@ -34,8 +34,8 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.rest.*;
+import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.util.EnvironmentUtil;
@@ -59,7 +59,7 @@ public class PolarisRESTCatalogMix implements Closeable {
   private RESTClient restClient = null;
   private CloseableGroup closeables = null;
   private Set<Endpoint> endpoints;
-  private OAuth2Util.AuthSession catalogAuth = null;
+  private AuthSession catalogAuth = null;
   private PolarisResourcePaths paths = null;
 
   // a lazy thread pool for token refresh
@@ -71,7 +71,7 @@ public class PolarisRESTCatalogMix implements Closeable {
           .add(Endpoint.V1_DELETE_TABLE)
           .build();
 
-  public PolarisRESTCatalogMix(Map<String, String> unresolved, OAuth2Util.AuthSession catalogAuth) {
+  public PolarisRESTCatalogMix(Map<String, String> unresolved, AuthSession catalogAuth) {
     // resolve any configuration that is supplied by environment variables
     // note that this is only done for local config properties and not for properties from the
     // catalog service
@@ -85,7 +85,7 @@ public class PolarisRESTCatalogMix implements Closeable {
             .withAuthSession(catalogAuth);
 
     ConfigResponse config;
-    config = fetchConfig(this.restClient, catalogAuth.headers(), props);
+    config = fetchConfig(this.restClient, catalogAuth, props);
     Map<String, String> mergedProps = config.merge(props);
     if (config.endpoints().isEmpty()) {
       this.endpoints = DEFAULT_ENDPOINTS;
@@ -106,7 +106,7 @@ public class PolarisRESTCatalogMix implements Closeable {
   }
 
   private static ConfigResponse fetchConfig(
-      RESTClient client, Map<String, String> headers, Map<String, String> properties) {
+      RESTClient client, AuthSession initialAuth, Map<String, String> properties) {
     // send the client's warehouse location to the service to keep in sync
     // this is needed for cases where the warehouse is configured client side, but may be used on
     // the server side,
@@ -120,12 +120,14 @@ public class PolarisRESTCatalogMix implements Closeable {
     }
 
     ConfigResponse configResponse =
-        client.get(
-            ResourcePaths.config(),
-            queryParams.build(),
-            ConfigResponse.class,
-            headers,
-            ErrorHandlers.defaultErrorHandler());
+        client
+            .withAuthSession(initialAuth)
+            .get(
+                ResourcePaths.config(),
+                queryParams.build(),
+                ConfigResponse.class,
+                RESTUtil.extractPrefixMap(properties, "header."),
+                ErrorHandlers.defaultErrorHandler());
     configResponse.validate();
     return configResponse;
   }

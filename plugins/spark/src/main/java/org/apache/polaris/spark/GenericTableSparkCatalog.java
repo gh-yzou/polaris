@@ -19,7 +19,6 @@
 package org.apache.polaris.spark;
 
 import com.google.common.collect.Maps;
-
 import java.net.URI;
 import java.util.*;
 import org.apache.iceberg.catalog.Namespace;
@@ -94,11 +93,14 @@ public class GenericTableSparkCatalog implements TableCatalog {
         CatalogTable catalogTable =
             new CatalogTable(
                 Spark3Util.toV1TableIdentifier(ident),
-                CatalogTableType.MANAGED(), // should use unity catalog logic to look into properties
+                CatalogTableType
+                    .MANAGED(), // should use unity catalog logic to look into properties
                 storageFormat,
                 new StructType(),
                 Option.apply(format),
-                JavaConverters.asScalaIteratorConverter(emptyStringList.iterator()).asScala().toSeq(),
+                JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
+                    .asScala()
+                    .toSeq(),
                 Option.apply(null),
                 "",
                 System.currentTimeMillis(),
@@ -110,7 +112,9 @@ public class GenericTableSparkCatalog implements TableCatalog {
                 Option.apply(null),
                 Option.apply(null),
                 Option.apply(null),
-                JavaConverters.asScalaIteratorConverter(emptyStringList.iterator()).asScala().toSeq(),
+                JavaConverters.asScalaIteratorConverter(emptyStringList.iterator())
+                    .asScala()
+                    .toSeq(),
                 false,
                 true,
                 JavaConverters.mapAsScalaMapConverter(emptyProperties)
@@ -144,14 +148,17 @@ public class GenericTableSparkCatalog implements TableCatalog {
     String format = properties.get("provider");
     try {
       LOG.warn("Initialize table for {}", ident);
-      boolean hasLocationClause = properties.containsKey(TableCatalog.PROP_LOCATION) && properties.get(TableCatalog.PROP_LOCATION) != null;
+      boolean hasLocationClause =
+          properties.containsKey(TableCatalog.PROP_LOCATION)
+              && properties.get(TableCatalog.PROP_LOCATION) != null;
       // boolean isPathTable = ident.namespace().length == 1 && new Path(ident.name()).isAbsolute;
       Map<String, String> tableProperties = Maps.newHashMap();
       tableProperties.putAll(properties);
       if (!hasLocationClause) {
         tableProperties.put(TableCatalog.PROP_LOCATION, properties.get("__FAKE_PATH__"));
       }
-      Table createResult = polarisCatalog.createTable(buildIdentifier(ident), format, tableProperties);
+      Table createResult =
+          polarisCatalog.createTable(buildIdentifier(ident), format, tableProperties);
       return loadTable(ident);
       /* if (format.equals("delta")) {
         return createResult;

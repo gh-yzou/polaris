@@ -30,10 +30,12 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.Spark3Util;
@@ -124,6 +126,27 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
     return catalog;
   }
 
+  protected void buildCatalogs(String name, CaseInsensitiveStringMap options) {
+    Configuration conf = SparkUtil.hadoopConfCatalogOverrides(SparkSession.active(), name);
+    Map<String, String> optionsMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    optionsMap.putAll(options.asCaseSensitiveMap());
+    optionsMap.put(CatalogProperties.APP_ID, SparkSession.active().sparkContext().applicationId());
+    optionsMap.put(CatalogProperties.USER, SparkSession.active().sparkContext().sparkUser());
+    PolarisAuthManager authManager = new PolarisAuthManager(name, optionsMap);
+
+    this.icebergCatalog =
+        new RESTCatalog(
+            SessionCatalog.SessionContext.createEmpty(),
+            (config) -> HTTPClient.builder(config).uri((String) config.get("uri")).build(),
+            (catalogName, config) -> authManager);
+
+    this.icebergCatalog.initialize(name, optionsMap);
+    PolarisRESTCatalogMix catalog =
+        new PolarisRESTCatalogMix(options, authManager.getDefaultAuthParent());
+
+    this.genericTableSparkCatalog = new GenericTableSparkCatalog(catalog);
+  }
+
   @Override
   public String name() {
     return catalogName;
@@ -133,13 +156,15 @@ public class SparkCatalog implements TableCatalog, SupportsNamespaces {
   public void initialize(String name, CaseInsensitiveStringMap options) {
     LOG.warn("Initialize the SparkCatalog {}, and options {}", name, options);
     this.catalogName = name;
-    this.icebergCatalog = buildIcebergCatalog(name, options);
+    buildCatalogs(name, options);
+    // this.icebergCatalog = buildIcebergCatalog(name, options);
     // this.polarisCatalog = buildPolarisCatalog(this.icebergCatalog, name, options);
     // this.polarisCatalog = buildPolarisCatalogScratch(name, options);
     // this.polarisCatalog = buildPolarisCatalogReflect(this.icebergCatalog);
-    this.genericTableSparkCatalog =
+
+    // this.genericTableSparkCatalog =
         // new GenericTableSparkCatalog(buildPolarisCatalogReflect(this.icebergCatalog, options));
-        new GenericTableSparkCatalog(buildPolarisCatalogMix(this.icebergCatalog, options));
+        // new GenericTableSparkCatalog(buildPolarisCatalogMix(this.icebergCatalog, options));
 
     this.asNamespaceCatalog = (org.apache.iceberg.catalog.SupportsNamespaces) this.icebergCatalog;
     this.asViewCatalog = (org.apache.iceberg.catalog.ViewCatalog) this.icebergCatalog;
